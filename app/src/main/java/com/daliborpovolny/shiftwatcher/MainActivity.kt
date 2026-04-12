@@ -18,20 +18,40 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.tooling.preview.Preview
 
+import androidx.activity.viewModels
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val app = application as ShiftWatcherApp
+        val viewModel: ContactViewModel by viewModels {
+            ContactViewModel.Factory(app.database.contactDao())
+        }
+
         setContent {
             ShiftWatcherTheme {
-                StartUp()
+                val contacts by viewModel.contacts.collectAsState()
+
+                StartUp(contacts,
+                    onAdd = { name, num -> viewModel.addContact(name, num) },
+                    onDelete = { viewModel.deleteContact(it) },
+                    onMoveUp = { viewModel.moveUp(it) },
+                    onMoveDown = { viewModel.moveDown(it) })
             }
         }
     }
 }
 
 @Composable
-fun StartUp() {
+fun StartUp(
+    contacts: List<Contact>,
+    onAdd: (String, String) -> Unit,
+    onDelete: (Contact) -> Unit,
+    onMoveUp: (Int) -> Unit,
+    onMoveDown: (Int) -> Unit
+) {
     // This state tracks which tab is selected
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -59,7 +79,13 @@ fun StartUp() {
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
                 0 -> MainScreen()
-                1 -> SettingsScreen()
+                1 -> SettingsScreen(
+                    contacts = contacts,
+                    onAdd = onAdd,
+                    onDelete = onDelete,
+                    onMoveUp = onMoveUp,
+                    onMoveDown = onMoveDown
+                )
             }
         }
     }
@@ -71,6 +97,15 @@ fun StartUp() {
 @Composable
 fun HomePagePreview() {
     ShiftWatcherTheme {
-        StartUp()
+        StartUp(
+            contacts = listOf(
+                Contact(number = "123 456 789", name = "John"),
+                Contact(number = "987 654 321", name = "Lennon")
+            ),
+            onAdd = { _, _ -> },
+            onDelete = { _ -> },
+            onMoveUp = { _ -> },
+            onMoveDown = { _ -> }
+        )
     }
 }

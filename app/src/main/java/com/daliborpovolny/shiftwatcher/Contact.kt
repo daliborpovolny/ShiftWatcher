@@ -1,7 +1,12 @@
 package com.daliborpovolny.shiftwatcher
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "contacts")
 data class Contact(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
     val number: String,
-    var name: String,
+    val name: String,
+    val priority: Int = 0
 )

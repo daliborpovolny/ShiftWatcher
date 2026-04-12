@@ -24,24 +24,24 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
 
 @Composable
-fun SettingsScreen() {
-    val contactList = remember {
-        mutableStateListOf(
-            Contact(number = "123 456 789", name = "John"),
-            Contact(number = "987 654 321", name = "Lennon")
-        )
-    }
+fun SettingsScreen(
+    contacts: List<Contact>,
+
+    onAdd: (String, String) -> Unit,
+    onDelete: (Contact) -> Unit,
+    onMoveUp: (Int) -> Unit,
+    onMoveDown: (Int) -> Unit,
+
+    ) {
+
 
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
@@ -70,7 +70,7 @@ fun SettingsScreen() {
         Button(
             onClick = {
                 if (newNumber.isNotBlank() && newName.isNotBlank()) {
-                    contactList.add(Contact(number = newNumber, name = newName))
+                    onAdd(newNumber, newName)
                     newNumber = ""
                     newName = ""
                 }
@@ -88,21 +88,17 @@ fun SettingsScreen() {
         // --- THE LIST ---
         LazyColumn(modifier = Modifier.weight(1f)) {
             // We use itemsIndexed so we know exactly where each contact is
-            itemsIndexed(contactList, key = { _, contact -> contact.id }) { index, contact ->
+            itemsIndexed(contacts, key = { _, contact -> contact.id }) { index, contact ->
                 ContactRow(
                     contact = contact,
                     isFirst = index == 0,
-                    isLast = index == contactList.size - 1,
-                    onDelete = { contactList.remove(contact) },
+                    isLast = index == contacts.size - 1,
+                    onDelete = { onDelete(contact) },
                     onMoveUp = {
-                        // Swap with previous
-                        val item = contactList.removeAt(index)
-                        contactList.add(index - 1, item)
+                        onMoveUp(index)
                     },
                     onMoveDown = {
-                        // Swap with next
-                        val item = contactList.removeAt(index)
-                        contactList.add(index + 1, item)
+                        onMoveDown(index)
                     }
                 )
             }
@@ -150,10 +146,10 @@ fun ContactRow(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SettingsPreview() {
-    ShiftWatcherTheme {
-        SettingsScreen()
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun SettingsPreview() {
+//    ShiftWatcherTheme {
+//        SettingsScreen()
+//    }
+//}
