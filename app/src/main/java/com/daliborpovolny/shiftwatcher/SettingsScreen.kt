@@ -54,7 +54,7 @@ fun NewSettingsScreen(
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
-    var selectedType by remember { mutableStateOf(ContactType.Escalation) }
+    var selectedType by remember { mutableStateOf(ContactType.Info) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Contact Book", style = MaterialTheme.typography.headlineMedium)
@@ -244,12 +244,12 @@ fun SettingsPreview() {
 
         NewSettingsScreen (
             escalationContacts = listOf(
-                EscalationContact(number = "123 456 789", name = "John"),
-                EscalationContact(number = "987 654 321", name = "Lennon")
+                EscalationContact(number = "123 456 789", name = "John Lennon"),
+                EscalationContact(number = "987 654 321", name = "Ringo Starr")
             ),
             infoContacts = listOf(
-                InfoContact(number = "123 456 789", name = "John"),
-                InfoContact(number = "987 654 321", name = "Lennon")
+                InfoContact(number = "123 456 789", name = "George Harrison"),
+                InfoContact(number = "987 654 321", name = "Paul MacCartney")
             ),
             escalationContactsManipulator = dummyEscalationManipulator,
             infoContactsManipulator = dummyInfoManipulator
