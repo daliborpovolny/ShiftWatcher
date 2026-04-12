@@ -29,30 +29,69 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+
+enum class ContactType {
+    Escalation, Info
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    contacts: List<Contact>,
+fun NewSettingsScreen(
+    infoContacts: List<InfoContact>,
+    infoContactsManipulator: InfoContactManipulator,
+    escalationContacts: List<EscalationContact>,
+    escalationContactsManipulator: EscalationContactManipulator,
 
-    onAdd: (String, String) -> Unit,
-    onDelete: (Contact) -> Unit,
-    onMoveUp: (Int) -> Unit,
-    onMoveDown: (Int) -> Unit,
-
-    ) {
-
-
+) {
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
-    // Using Scaffold properly to handle paddings
+    var selectedType by remember { mutableStateOf(ContactType.Escalation) }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Emergency Contacts", style = MaterialTheme.typography.headlineMedium)
+        Text("Contact Book", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- NEW INPUT LAYOUT ---
-        // Stack inputs vertically so they have room to breathe
+        // --- TOGGLE SWITCH ---
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ContactType.entries.forEachIndexed { index, type ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = ContactType.entries.size),
+                    onClick = { selectedType = type },
+                    selected = selectedType == type
+                ) {
+                    Text(type.name)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Add to the ${selectedType.name} List",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val escalationInfo = "List of contacts, that will be progressively be called top to bottom if an alarm is not dismissed within 15 minutes"
+        val infoInfo = "List of contacts, that will each be texted on the start and end of a shift"
+
+        Text(
+            text = if (selectedType == ContactType.Escalation) escalationInfo else infoInfo,
+            style = MaterialTheme.typography.bodySmall
+        )
+
         OutlinedTextField(
             value = newName,
             onValueChange = { newName = it },
@@ -70,7 +109,11 @@ fun SettingsScreen(
         Button(
             onClick = {
                 if (newNumber.isNotBlank() && newName.isNotBlank()) {
-                    onAdd(newNumber, newName)
+                    if (selectedType == ContactType.Escalation) {
+                        escalationContactsManipulator.add(newName, newNumber)
+                    } else {
+                        infoContactsManipulator.add(newName, newNumber)
+                    }
                     newNumber = ""
                     newName = ""
                 }
@@ -78,36 +121,42 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("Add Contact")
+            Text("Add to ${selectedType.name}")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-
-
-        // --- THE LIST ---
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            // We use itemsIndexed so we know exactly where each contact is
-            itemsIndexed(contacts, key = { _, contact -> contact.id }) { index, contact ->
-                ContactRow(
-                    contact = contact,
-                    isFirst = index == 0,
-                    isLast = index == contacts.size - 1,
-                    onDelete = { onDelete(contact) },
-                    onMoveUp = {
-                        onMoveUp(index)
-                    },
-                    onMoveDown = {
-                        onMoveDown(index)
-                    }
-                )
+        if (selectedType == ContactType.Escalation) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                itemsIndexed(escalationContacts, key = { _, contact -> contact.id }) { index, contact ->
+                    EscalationContactRow(
+                        contact = contact,
+                        isFirst = index == 0,
+                        isLast = index == escalationContacts.size - 1,
+                        onDelete = { escalationContactsManipulator.delete(contact) },
+                        onMoveUp = { escalationContactsManipulator.moveUp(index) },
+                        onMoveDown = { escalationContactsManipulator.moveDown(index) }
+                    )
+                }
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                itemsIndexed(infoContacts, key = { _, contact -> contact.id }) { _, contact ->
+                    InfoContactRow(
+                        contact = contact,
+                        onDelete = { infoContactsManipulator.delete(contact) },
+                    )
+                }
             }
         }
+
+
     }
 }
+
 @Composable
-fun ContactRow(
-    contact: Contact,
+fun EscalationContactRow(
+    contact: EscalationContact,
     isFirst: Boolean,
     isLast: Boolean,
     onDelete: () -> Unit,
@@ -146,10 +195,65 @@ fun ContactRow(
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun SettingsPreview() {
-//    ShiftWatcherTheme {
-//        SettingsScreen()
-//    }
-//}
+
+@Composable
+fun InfoContactRow(
+    contact: InfoContact,
+    onDelete: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Text info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(contact.name, style = MaterialTheme.typography.titleMedium)
+                Text(contact.number, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Delete Button
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsPreview() {
+
+    ShiftWatcherTheme {
+
+        val dummyEscalationManipulator = object : EscalationContactManipulator {
+            override fun add(name: String, number: String) {}
+            override fun delete(contact: EscalationContact) {}
+            override fun moveUp(index: Int) {}
+            override fun moveDown(index: Int) {}
+        }
+
+        val dummyInfoManipulator = object : InfoContactManipulator {
+            override fun add(name: String, number: String) {}
+            override fun delete(contact: InfoContact) {}
+        }
+
+        NewSettingsScreen (
+            escalationContacts = listOf(
+                EscalationContact(number = "123 456 789", name = "John"),
+                EscalationContact(number = "987 654 321", name = "Lennon")
+            ),
+            infoContacts = listOf(
+                InfoContact(number = "123 456 789", name = "John"),
+                InfoContact(number = "987 654 321", name = "Lennon")
+            ),
+            escalationContactsManipulator = dummyEscalationManipulator,
+            infoContactsManipulator = dummyInfoManipulator
+
+        )
+    }
+}

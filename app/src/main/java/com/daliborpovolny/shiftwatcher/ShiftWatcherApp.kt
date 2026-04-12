@@ -10,6 +10,10 @@ class ShiftWatcherApp : Application() {
             this,
             AppDatabase::class.java,
             "shift_watcher_db"
-        ).build()
+        )
+            .fallbackToDestructiveMigrationFrom(
+                dropAllTables = true,
+                1
+            )            .build()
     }
 }

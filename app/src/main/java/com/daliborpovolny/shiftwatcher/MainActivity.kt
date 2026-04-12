@@ -30,15 +30,33 @@ class MainActivity : ComponentActivity() {
             ContactViewModel.Factory(app.database.contactDao())
         }
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+        }
+
+
         setContent {
             ShiftWatcherTheme {
-                val contacts by viewModel.contacts.collectAsState()
+                val escalationContacts by viewModel.escalationContacts.collectAsState()
+                val infoContacts by viewModel.infoContacts.collectAsState()
 
-                StartUp(contacts,
-                    onAdd = { name, num -> viewModel.addContact(name, num) },
-                    onDelete = { viewModel.deleteContact(it) },
-                    onMoveUp = { viewModel.moveUp(it) },
-                    onMoveDown = { viewModel.moveDown(it) })
+                val escalationManipulator = object : EscalationContactManipulator {
+                    override fun add(name: String, number: String) { viewModel.addEscalationContact(name, number)}
+                    override fun delete(contact: EscalationContact) { viewModel.deleteEscalationContact(contact)}
+                    override fun moveUp(index: Int) {viewModel.moveUp(index)}
+                    override fun moveDown(index: Int) {viewModel.moveDown(index)}
+                }
+
+                val infoManipulator = object : InfoContactManipulator {
+                    override fun add(name: String, number: String) { viewModel.addInfoContact(name, number)}
+                    override fun delete(contact: InfoContact) { viewModel.deleteInfoContact(contact)}
+                }
+                StartUp(
+                    escalationContacts = escalationContacts,
+                    infoContacts = infoContacts,
+                    escalationContactsManipulator = escalationManipulator,
+                    infoContactsManipulator = infoManipulator,
+                )
             }
         }
     }
@@ -46,11 +64,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun StartUp(
-    contacts: List<Contact>,
-    onAdd: (String, String) -> Unit,
-    onDelete: (Contact) -> Unit,
-    onMoveUp: (Int) -> Unit,
-    onMoveDown: (Int) -> Unit
+    infoContacts: List<InfoContact>,
+    infoContactsManipulator: InfoContactManipulator,
+    escalationContacts: List<EscalationContact>,
+    escalationContactsManipulator: EscalationContactManipulator,
+
 ) {
     // This state tracks which tab is selected
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -78,13 +96,15 @@ fun StartUp(
         // (so the bottom bar doesn't cover our content)
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> MainScreen()
-                1 -> SettingsScreen(
-                    contacts = contacts,
-                    onAdd = onAdd,
-                    onDelete = onDelete,
-                    onMoveUp = onMoveUp,
-                    onMoveDown = onMoveDown
+                0 -> MainScreen(
+                    shiftState = WatcherService.currentState,
+                    remainingTime = formatTime(WatcherService.remainingSeconds)
+                )
+                1 -> NewSettingsScreen(
+                    escalationContacts = escalationContacts,
+                    infoContacts = infoContacts,
+                    escalationContactsManipulator = escalationContactsManipulator,
+                    infoContactsManipulator = infoContactsManipulator
                 )
             }
         }
@@ -97,15 +117,31 @@ fun StartUp(
 @Composable
 fun HomePagePreview() {
     ShiftWatcherTheme {
+
+        val dummyEscalationManipulator = object : EscalationContactManipulator {
+            override fun add(name: String, number: String) {}
+            override fun delete(contact: EscalationContact) {}
+            override fun moveUp(index: Int) {}
+            override fun moveDown(index: Int) {}
+        }
+
+        val dummyInfoManipulator = object : InfoContactManipulator {
+            override fun add(name: String, number: String) {}
+            override fun delete(contact: InfoContact) {}
+        }
+
         StartUp(
-            contacts = listOf(
-                Contact(number = "123 456 789", name = "John"),
-                Contact(number = "987 654 321", name = "Lennon")
+            escalationContacts = listOf(
+                EscalationContact(number = "123 456 789", name = "John"),
+                EscalationContact(number = "987 654 321", name = "Lennon")
             ),
-            onAdd = { _, _ -> },
-            onDelete = { _ -> },
-            onMoveUp = { _ -> },
-            onMoveDown = { _ -> }
+            infoContacts = listOf(
+                InfoContact(number = "123 456 789", name = "John"),
+                InfoContact(number = "987 654 321", name = "Lennon")
+            ),
+            escalationContactsManipulator = dummyEscalationManipulator,
+            infoContactsManipulator = dummyInfoManipulator,
+
         )
     }
 }
