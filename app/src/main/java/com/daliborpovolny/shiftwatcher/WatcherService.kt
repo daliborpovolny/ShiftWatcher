@@ -3,18 +3,10 @@ package com.daliborpovolny.shiftwatcher
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.AudioManager
-import android.media.Ringtone
-import android.media.RingtoneManager
-import android.os.CountDownTimer
-import android.os.IBinder
-import android.os.SystemClock
+import android.media.*
+import android.os.*
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
 
 // Testing values
