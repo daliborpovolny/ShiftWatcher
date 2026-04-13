@@ -41,15 +41,31 @@ class MainActivity : ComponentActivity() {
                 val infoContacts by viewModel.infoContacts.collectAsState()
 
                 val escalationManipulator = object : EscalationContactManipulator {
-                    override fun add(name: String, number: String) { viewModel.addEscalationContact(name, number)}
-                    override fun delete(contact: EscalationContact) { viewModel.deleteEscalationContact(contact)}
-                    override fun moveUp(index: Int) {viewModel.moveUp(index)}
-                    override fun moveDown(index: Int) {viewModel.moveDown(index)}
+                    override fun add(name: String, number: String) {
+                        viewModel.addEscalationContact(name, number)
+                    }
+
+                    override fun delete(contact: EscalationContact) {
+                        viewModel.deleteEscalationContact(contact)
+                    }
+
+                    override fun moveUp(index: Int) {
+                        viewModel.moveUp(index)
+                    }
+
+                    override fun moveDown(index: Int) {
+                        viewModel.moveDown(index)
+                    }
                 }
 
                 val infoManipulator = object : InfoContactManipulator {
-                    override fun add(name: String, number: String) { viewModel.addInfoContact(name, number)}
-                    override fun delete(contact: InfoContact) { viewModel.deleteInfoContact(contact)}
+                    override fun add(name: String, number: String) {
+                        viewModel.addInfoContact(name, number)
+                    }
+
+                    override fun delete(contact: InfoContact) {
+                        viewModel.deleteInfoContact(contact)
+                    }
                 }
                 StartUp(
                     escalationContacts = escalationContacts,
@@ -69,7 +85,7 @@ fun StartUp(
     escalationContacts: List<EscalationContact>,
     escalationContactsManipulator: EscalationContactManipulator,
 
-) {
+    ) {
     // This state tracks which tab is selected
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -100,6 +116,7 @@ fun StartUp(
                     shiftState = WatcherService.currentState,
                     remainingTime = formatTime(WatcherService.remainingSeconds)
                 )
+
                 1 -> NewSettingsScreen(
                     escalationContacts = escalationContacts,
                     infoContacts = infoContacts,
@@ -110,7 +127,6 @@ fun StartUp(
         }
     }
 }
-
 
 
 @Preview(showBackground = true)
@@ -142,6 +158,6 @@ fun HomePagePreview() {
             escalationContactsManipulator = dummyEscalationManipulator,
             infoContactsManipulator = dummyInfoManipulator,
 
-        )
+            )
     }
 }

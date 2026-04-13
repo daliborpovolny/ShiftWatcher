@@ -14,6 +14,6 @@ class ShiftWatcherApp : Application() {
             .fallbackToDestructiveMigrationFrom(
                 dropAllTables = true,
                 1
-            )            .build()
+            ).build()
     }
 }

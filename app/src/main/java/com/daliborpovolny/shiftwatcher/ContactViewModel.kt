@@ -20,7 +20,13 @@ class ContactViewModel(private val dao: ContactDao) : ViewModel() {
         viewModelScope.launch {
             // We find the current highest priority to put the new one at the end
             val currentMax = escalationContacts.value.maxOfOrNull { it.priority } ?: -1
-            dao.insertEscalationContact(EscalationContact(name = name, number = number, priority = currentMax + 1))
+            dao.insertEscalationContact(
+                EscalationContact(
+                    name = name,
+                    number = number,
+                    priority = currentMax + 1
+                )
+            )
         }
     }
 

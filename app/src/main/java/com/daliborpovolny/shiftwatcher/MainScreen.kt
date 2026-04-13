@@ -26,7 +26,9 @@ fun MainScreen(
     val context = LocalContext.current
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -78,8 +80,11 @@ fun MainScreen(
             }
 
             ShiftState.ESCALATING -> {
-                Text("Escalating", style= MaterialTheme.typography.displayMedium)
-                Text("Calling contacts from the escalation list", style= MaterialTheme.typography.bodyMedium)
+                Text("Escalating", style = MaterialTheme.typography.displayMedium)
+                Text(
+                    "Calling contacts from the escalation list",
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
             }
         }

@@ -50,13 +50,15 @@ fun NewSettingsScreen(
     escalationContacts: List<EscalationContact>,
     escalationContactsManipulator: EscalationContactManipulator,
 
-) {
+    ) {
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
     var selectedType by remember { mutableStateOf(ContactType.Info) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
         Text("Contact Book", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -66,7 +68,10 @@ fun NewSettingsScreen(
         ) {
             ContactType.entries.forEachIndexed { index, type ->
                 SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = ContactType.entries.size),
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = ContactType.entries.size
+                    ),
                     onClick = { selectedType = type },
                     selected = selectedType == type
                 ) {
@@ -84,7 +89,8 @@ fun NewSettingsScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        val escalationInfo = "List of contacts, that will be progressively be called top to bottom if an alarm is not dismissed within 15 minutes"
+        val escalationInfo =
+            "List of contacts, that will be progressively be called top to bottom if an alarm is not dismissed within 15 minutes"
         val infoInfo = "List of contacts, that will each be texted on the start and end of a shift"
 
         Text(
@@ -128,7 +134,9 @@ fun NewSettingsScreen(
 
         if (selectedType == ContactType.Escalation) {
             LazyColumn(modifier = Modifier.weight(1f)) {
-                itemsIndexed(escalationContacts, key = { _, contact -> contact.id }) { index, contact ->
+                itemsIndexed(
+                    escalationContacts,
+                    key = { _, contact -> contact.id }) { index, contact ->
                     EscalationContactRow(
                         contact = contact,
                         isFirst = index == 0,
@@ -164,7 +172,9 @@ fun EscalationContactRow(
     onMoveDown: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -189,7 +199,11 @@ fun EscalationContactRow(
 
             // Delete Button
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -202,7 +216,9 @@ fun InfoContactRow(
     onDelete: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -217,7 +233,11 @@ fun InfoContactRow(
 
             // Delete Button
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
@@ -242,7 +262,7 @@ fun SettingsPreview() {
             override fun delete(contact: InfoContact) {}
         }
 
-        NewSettingsScreen (
+        NewSettingsScreen(
             escalationContacts = listOf(
                 EscalationContact(number = "123 456 789", name = "John Lennon"),
                 EscalationContact(number = "987 654 321", name = "Ringo Starr")
