@@ -56,8 +56,7 @@ fun MainScreen(
                         }
                         context.startService(intent)
                     }
-                    )
-                {
+                ) {
                     Text("END SHIFT")
                 }
             }
@@ -72,9 +71,16 @@ fun MainScreen(
                     },
                     modifier = Modifier.fillMaxSize(),
                     colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Red),
-                    shape = androidx.compose.ui.graphics.RectangleShape                ) {
+                    shape = androidx.compose.ui.graphics.RectangleShape
+                ) {
                     Text("I AM OKAY", style = MaterialTheme.typography.displayLarge)
                 }
+            }
+
+            ShiftState.ESCALATING -> {
+                Text("Escalating", style= MaterialTheme.typography.displayMedium)
+                Text("Calling contacts from the escalation list", style= MaterialTheme.typography.bodyMedium)
+
             }
         }
     }

@@ -32,17 +32,17 @@ const val PRIMARY_CHECKUP_INTERVAL_MS = 10 * 1000L // 10 seconds
 const val ESCALATION_GRACE_PERIOD_MS = 10 * 1000L  // 10 seconds
 
 enum class ShiftState {
-    INACTIVE,   // App opened, nothing started
-    ACTIVE,     // 1-hour timer running
-    ALARMING    // 10s passed, phone screaming
+    INACTIVE,   // App opened, shift inactive
+    ACTIVE,     // PRIMARY_CHECKUP_INTERVAL timer running
+    ALARMING,    // ESCALATION_GRACE_PERIOD passed, phone screaming
+
+    ESCALATING  // texting or calling the escalation contacts list
 }
 
 class WatcherService : Service() {
 
     companion object {
-        // This is a "State" that the UI can observe
         var currentState by mutableStateOf(ShiftState.INACTIVE)
-        // We can use this for the countdown later
         var remainingSeconds by mutableIntStateOf(3600)
     }
 
@@ -52,10 +52,14 @@ class WatcherService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // This is called when we click "START" in the UI
+        println("onStartCommand initiated")
+
         createNotificationChannel()
         val notification = NotificationCompat.Builder(this, "SHIFT_WATCHER_CHANNEL")
             .setContentTitle("Shift Watcher Active")
             .setContentText("Your safety is being monitored.")
+//            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+//            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true) // User cannot swipe it away
             .build()
@@ -76,10 +80,10 @@ class WatcherService : Service() {
                 println("in stop alarm in intent action")
 
             }
-            "ESCALATE_ALARM" -> {
+            "ESCALATE" -> {
                 println("escalating...!")
                 println("in escalating in intent action")
-
+                currentState = ShiftState.ESCALATING
             }
             "END_SHIFT" -> {
                 println("in end shift in intent action")
@@ -177,7 +181,7 @@ private fun scheduleNextCheckIn() {
 
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(this, WatcherService::class.java).apply {
-            action = "ESCALATE_EMERGENCY"
+            action = "ESCALATE"
         }
         val pendingIntent = PendingIntent.getService(
             this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -226,7 +230,7 @@ private fun scheduleNextCheckIn() {
 
         // CANCEL ESCALATION
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(this, WatcherService::class.java).apply { action = "ESCALATE_EMERGENCY" }
+        val intent = Intent(this, WatcherService::class.java).apply { action = "ESCALATE" }
         val pendingIntent = PendingIntent.getService(this, 1, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
         pendingIntent?.let { alarmManager.cancel(it) }
 
@@ -247,7 +251,7 @@ private fun scheduleNextCheckIn() {
         }
 
         // Cancel Escalation Alarm
-        val escalationIntent = Intent(this, WatcherService::class.java).apply { action = "ESCALATE_EMERGENCY" }
+        val escalationIntent = Intent(this, WatcherService::class.java).apply { action = "ESCALATE" }
         PendingIntent.getService(this, 1, escalationIntent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)?.let {
             alarmManager.cancel(it)
             it.cancel()
