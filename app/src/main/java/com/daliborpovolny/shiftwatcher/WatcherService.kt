@@ -44,7 +44,11 @@ class WatcherService : Service() {
         var currentState by mutableStateOf(ShiftState.INACTIVE)
         var remainingSeconds by mutableIntStateOf(3600)
 
-        var escalationStatus by mutableStateOf("")
+        val escalationLogs = mutableStateListOf<String>()
+
+        fun addEscalationLog(message: String) {
+            escalationLogs.add(0, message)
+        }
     }
 
     private var ringtone: Ringtone? = null
@@ -90,6 +94,7 @@ class WatcherService : Service() {
 
             ACTION_ESCALATE -> {
                 currentState = ShiftState.ESCALATING
+                escalationLogs.clear()
 //                executeEscalation()
                 executeSmsWaitCallSequence()
             }
@@ -106,7 +111,8 @@ class WatcherService : Service() {
                 currentState = ShiftState.STOPPED_ESCALATION
                 cancelAllAlarms()
 
-                Log.d("WatcherService", "Escalation stopped -- SHOULD BE UNUSED")
+                Log.d("WatcherService", "Escalation stopped")
+                addEscalationLog("Escalation stopped by user")
             }
 
             ACTION_END_MESSAGE_RECEIVED -> {
@@ -117,6 +123,7 @@ class WatcherService : Service() {
                     cancelAllAlarms()
 
                     Log.d("WatcherService", "stopped escalation")
+                    addEscalationLog("Escalation stopped by reply")
                 }
 
             }
@@ -317,6 +324,7 @@ class WatcherService : Service() {
 
             if (contacts.isEmpty()) {
                 Log.e("WatcherService", "No escalation contacts found!")
+                addEscalationLog("No escalation contacts found!")
                 return@launch
             }
 
@@ -327,6 +335,7 @@ class WatcherService : Service() {
                 try {
                     sendSms(contact.number, message)
                     Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
+                    addEscalationLog("Escalation SMS sent to ${contact.name}")
 
                     // Wait 1 second between messages to avoid spam filters
                     delay(1000)
@@ -335,6 +344,7 @@ class WatcherService : Service() {
                         "WatcherService",
                         "Failed to send Escalation SMS to ${contact.name}: ${e.message}"
                     )
+                    addEscalationLog("Failed to send SMS to ${contact.name}")
                 }
             }
         }
@@ -350,12 +360,14 @@ class WatcherService : Service() {
             startActivity(intent)
         } catch (e: SecurityException) {
             Log.e("WatcherService", "Permission denied for calling!")
+            addEscalationLog("Permission denied for calling!")
         }
     }
 
     // potential escalation policy -> calls sequentially each number in the escalation contact list, if it receives a text message back within 3 minutes it stops the escalation
     private fun executeSmsWaitCallSequence() {
         Log.d("WatcherService", "SmsCallDetect Escalation Sequence initiated")
+        addEscalationLog("Escalation sequence initiated")
 
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
@@ -368,36 +380,38 @@ class WatcherService : Service() {
             val waitTimeMs = 3 * 60 * 1000L // 3 minutes
 
             contacts.forEach { contact ->
-                escalationStatus = "Texting ${contact.name}..."
+                if (currentState != ShiftState.ESCALATING) return@launch
+
+                addEscalationLog("Texting ${contact.name}...")
                 sendSms(
                     contact.number,
-                    "EMERGENCY: \$name needs help. Please reply to this text to stop escalation."
+                    "EMERGENCY: Safety check-in missed. Please reply to stop escalation."
                 )
                 Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
 
 
+                addEscalationLog("Calling ${contact.name}...")
                 makeEmergencyCall(contact.number)
 
-                escalationStatus = "Waiting for ${contact.name} to reply..."
+                addEscalationLog("Waiting for ${contact.name} to reply...")
 
                 // Here is the "Wait for X time" logic
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < waitTimeMs) {
-                    if (currentState == ShiftState.ACTIVE) {
+                    if (currentState == ShiftState.ACTIVE || currentState == ShiftState.STOPPED_ESCALATION || currentState == ShiftState.INACTIVE) {
                         Log.d(
                             "WatcherService",
-                            "Escalation detected STOP action. Exiting sequence."
+                            "Escalation sequence interrupted. Exiting."
                         )
-                        escalationStatus = "Escalation stopped by reply."
-                        return@launch // EXIT ENTIRE SEQUENCE
+                        return@launch
                     }
                     delay(2000) // Check state every 2 seconds
                 }
 
                 // If we reach here, no one stopped the alarm, so we call
-                escalationStatus = "No reply. Calling ${contact.name}..."
-                delay(30000)
+                addEscalationLog("No response from ${contact.name}")
             }
+            addEscalationLog("Escalation sequence completed.")
         }
     }
 
@@ -476,6 +490,7 @@ class WatcherService : Service() {
         val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             this.getSystemService(SmsManager::class.java)
         } else {
+            @Suppress("DEPRECATION")
             SmsManager.getDefault()
         }
 

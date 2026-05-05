@@ -2,11 +2,15 @@ package com.daliborpovolny.shiftwatcher
 
 import android.content.Intent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
@@ -19,7 +23,6 @@ fun formatTime(seconds: Int): String {
 
 @Composable
 fun MainScreen(
-    // These should ideally come from your ViewModel
     shiftState: ShiftState = ShiftState.INACTIVE,
     remainingTime: String = "59:59"
 ) {
@@ -54,7 +57,7 @@ fun MainScreen(
                 OutlinedButton(
                     onClick = {
                         val intent = Intent(context, WatcherService::class.java).apply {
-                            action = "END_SHIFT"
+                            action = WatcherService.ACTION_END_SHIFT
                         }
                         context.startService(intent)
                     }
@@ -67,12 +70,12 @@ fun MainScreen(
                 Button(
                     onClick = {
                         val intent = Intent(context, WatcherService::class.java).apply {
-                            action = "STOP_ALARM"
+                            action = WatcherService.ACTION_STOP_ALARM
                         }
                         context.startService(intent)
                     },
                     modifier = Modifier.fillMaxSize(),
-                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Red),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = androidx.compose.ui.graphics.RectangleShape
                 ) {
                     Text("I AM OKAY", style = MaterialTheme.typography.displayLarge)
@@ -80,16 +83,95 @@ fun MainScreen(
             }
 
             ShiftState.ESCALATING -> {
-                Text("Escalating", style = MaterialTheme.typography.displayMedium)
                 Text(
-                    "Calling contacts from the escalation list",
-                    style = MaterialTheme.typography.bodyMedium
+                    "Escalating, calling emergency contacts",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
                 )
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        val intent = Intent(context, WatcherService::class.java).apply {
+                            action = WatcherService.ACTION_STOP_ESCALATION
+                        }
+                        context.startService(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("STOP", style = MaterialTheme.typography.titleLarge)
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text(
+                    "Activity Log",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(WatcherService.escalationLogs) { log ->
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
             }
 
             ShiftState.STOPPED_ESCALATION -> {
-                Text("Escalation stopped")
+                Text(
+                    "Escalation Stopped",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    "Activity Log",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(WatcherService.escalationLogs) { log ->
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        val intent = Intent(context, WatcherService::class.java).apply {
+                            action = WatcherService.ACTION_END_SHIFT
+                        }
+                        context.startService(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("DISMISS")
+                }
             }
         }
     }
@@ -98,7 +180,7 @@ fun MainScreen(
 @Composable
 @Preview(showBackground = true)
 fun MainScreenPreview() {
-    ShiftWatcherTheme() {
+    ShiftWatcherTheme {
         MainScreen()
     }
 }
