@@ -78,7 +78,7 @@ fun NewSettingsScreen(
         }
 
         Text(
-            text = "Add to the ${selectedType.name} List",
+            text = "Přidat do ${ScreenTypeToCzechName(selectedType)} seznamu",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary
         )
