@@ -12,8 +12,8 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 
 // Testing values
-const val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 1000L
-const val ESCALATION_GRACE_PERIOD_MS = 60 * 1000L
+const val PRIMARY_CHECKUP_INTERVAL_MS = 5 * 1000L
+const val ESCALATION_GRACE_PERIOD_MS = 5 * 1000L
 
 enum class ShiftState {
     INACTIVE,
@@ -35,6 +35,8 @@ class WatcherService : Service() {
         const val ACTION_END_SHIFT = "END_SHIFT"
 
         const val ACTION_STOP_ESCALATION = "STOP_ESCALATION"
+
+        const val ACTION_END_MESSAGE_RECEIVED = "END_MESSAGE_RECEIVED"
 
         const val FOREGROUND_NOTIFICATION_ID = 1
         const val ALARM_NOTIFICATION_ID = 2
@@ -104,8 +106,21 @@ class WatcherService : Service() {
                 currentState = ShiftState.STOPPED_ESCALATION
                 cancelAllAlarms()
 
-                Log.d("WatcherService", "Escalation stopped")
+                Log.d("WatcherService", "Escalation stopped -- SHOULD BE UNUSED")
             }
+
+            ACTION_END_MESSAGE_RECEIVED -> {
+                Log.d("WatcherService", "END_MESSAGE_RECEIVED received")
+
+                if (currentState == ShiftState.ESCALATING) {
+                    currentState = ShiftState.STOPPED_ESCALATION
+                    cancelAllAlarms()
+
+                    Log.d("WatcherService", "stopped escalation")
+                }
+
+            }
+
         }
         return START_STICKY
     }
@@ -369,7 +384,10 @@ class WatcherService : Service() {
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < waitTimeMs) {
                     if (currentState == ShiftState.ACTIVE) {
-                        Log.d("WatcherService", "Escalation detected STOP action. Exiting sequence.")
+                        Log.d(
+                            "WatcherService",
+                            "Escalation detected STOP action. Exiting sequence."
+                        )
                         escalationStatus = "Escalation stopped by reply."
                         return@launch // EXIT ENTIRE SEQUENCE
                     }

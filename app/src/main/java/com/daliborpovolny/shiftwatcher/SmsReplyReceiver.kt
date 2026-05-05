@@ -29,7 +29,7 @@ class SmsReplyReceiver : BroadcastReceiver() {
                 Log.d("SmsReplyReceiver", "Keyword detected. Triggering escalation stop.")
 
                 val serviceIntent = Intent(context, WatcherService::class.java).apply {
-                    action = WatcherService.ACTION_STOP_ALARM
+                    action = WatcherService.ACTION_END_MESSAGE_RECEIVED
                 }
 
                 try {
