@@ -78,13 +78,13 @@ fun MainScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = androidx.compose.ui.graphics.RectangleShape
                 ) {
-                    Text("Jsem v pořádku", style = MaterialTheme.typography.displayLarge)
+                    Text("Jsem v pořádku", style = MaterialTheme.typography.displayLarge, textAlign = TextAlign.Center)
                 }
             }
 
             ShiftState.ESCALATING -> {
                 Text(
-                    "Escalating",
+                    "Probíhá Eskalace",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.error,
@@ -109,7 +109,7 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
-                    "Activity Log",
+                    "Výpis událostí",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -170,7 +170,7 @@ fun MainScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Ukončit")
+                    Text("Zavřít")
                 }
             }
         }

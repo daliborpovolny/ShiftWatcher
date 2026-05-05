@@ -38,7 +38,7 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = "Klikněte pro přidělení povoleních.\n Možná budete muset ručně otevřít Nastavení telefonu.",
+                        text = "Klikněte pro přidělení potřebných povolení.\nMožná budete muset ručně otevřít nastavení telefonu.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
