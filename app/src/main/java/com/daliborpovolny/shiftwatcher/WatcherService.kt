@@ -11,9 +11,39 @@ import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 
-// Testing values
-const val PRIMARY_CHECKUP_INTERVAL_MS = 5 * 1000L
-const val ESCALATION_GRACE_PERIOD_MS = 5 * 1000L
+const val TEST = true
+
+// Production values
+//const val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 60 * 1000L
+//const val ESCALATION_GRACE_PERIOD_MS = 15 * 60 * 1000L
+
+interface AppConfig {
+
+    // interval between check-ups
+    val PRIMARY_CHECKUP_INTERVAL_MS: Long
+
+    // interval for which the check-up alarm is active before escalation starts
+    val ESCALATION_GRACE_PERIOD_MS: Long
+
+    // interval for which the app waits after contacting a contact before contacting the next one
+    val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS: Long
+}
+
+object ProdConfig : AppConfig {
+    override val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 60 * 1000L
+    override val ESCALATION_GRACE_PERIOD_MS = 15 * 60 * 1000L
+    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 3 * 60 * 1000L
+
+}
+
+object TestConfig : AppConfig {
+    override val PRIMARY_CHECKUP_INTERVAL_MS = 5_000L
+    override val ESCALATION_GRACE_PERIOD_MS = 5_000L
+    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 5_000L
+}
+
+val config = if (TEST) TestConfig else ProdConfig
+
 
 enum class ShiftState {
     INACTIVE,
@@ -157,8 +187,8 @@ class WatcherService : Service() {
 
     private fun buildForegroundNotification(): Notification {
         return NotificationCompat.Builder(this, "SHIFT_WATCHER_CHANNEL")
-            .setContentTitle("Shift Watcher Active")
-            .setContentText("Your safety is being monitored.")
+            .setContentTitle("Hlídač směny aktivní")
+            .setContentText("Nastaven kontrolní budík.")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build()
@@ -174,7 +204,7 @@ class WatcherService : Service() {
         }
 
         val pendingIntent = createPendingIntent(ACTION_CHECK_IN_PROMPT, 0)
-        val triggerTime = SystemClock.elapsedRealtime() + PRIMARY_CHECKUP_INTERVAL_MS
+        val triggerTime = SystemClock.elapsedRealtime() + config.PRIMARY_CHECKUP_INTERVAL_MS
 
         try {
             alarmManager.setExactAndAllowWhileIdle(
@@ -182,7 +212,7 @@ class WatcherService : Service() {
                 triggerTime,
                 pendingIntent
             )
-            startVisualTimer((PRIMARY_CHECKUP_INTERVAL_MS / 1000).toInt())
+            startVisualTimer((config.PRIMARY_CHECKUP_INTERVAL_MS / 1000).toInt())
             return true
         } catch (e: SecurityException) {
             e.printStackTrace()
@@ -208,7 +238,7 @@ class WatcherService : Service() {
 
         // 2. Schedule Escalation (Using the correct action string)
         val pendingIntent = createPendingIntent(ACTION_ESCALATE, 1)
-        val escalationTime = SystemClock.elapsedRealtime() + ESCALATION_GRACE_PERIOD_MS
+        val escalationTime = SystemClock.elapsedRealtime() + config.ESCALATION_GRACE_PERIOD_MS
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.ELAPSED_REALTIME_WAKEUP,
             escalationTime,
@@ -229,8 +259,8 @@ class WatcherService : Service() {
 
         val alarmNotification = NotificationCompat.Builder(this, "ALARM_CHANNEL")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("CHECK-IN REQUIRED!")
-            .setContentText("Please confirm you are okay.")
+            .setContentTitle("Kontrola vyžadována!")
+            .setContentText("Prosím potvrďte, že jste v pořádku.")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(fullScreenPendingIntent, true)
@@ -378,8 +408,7 @@ class WatcherService : Service() {
             val contacts = contactDao.getAllEscalationContactsSync()
             val name = contactDao.getUserSetting("user_name")
 
-
-            val waitTimeMs = 3 * 60 * 1000L // 3 minutes
+            val waitTimeMs = config.ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS
 
             contacts.forEach { contact ->
                 if (currentState != ShiftState.ESCALATING) return@launch
@@ -410,10 +439,10 @@ class WatcherService : Service() {
                     delay(2000) // Check state every 2 seconds
                 }
 
-                // If we reach here, no one stopped the alarm, so we call
+                // Waited and received no answer, logging and moving to the next one
                 addEscalationLog("Žádná odpověd od ${contact.name}")
             }
-            addEscalationLog("Všechny kontakty kontaktovány.")
+            addEscalationLog("Všechny kontakty kontaktovány, žádná odpověd.")
         }
     }
 
