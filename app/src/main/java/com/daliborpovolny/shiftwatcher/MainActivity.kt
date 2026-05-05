@@ -133,7 +133,8 @@ class MainActivity : ComponentActivity() {
         } else true
 
         // Check if Notification Listener is enabled (for RCS support)
-        val listener = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+        val listener = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+            ?.contains(packageName) == true
 
         // Only set to true if EVERY critical permission is ok
         arePermissionsGranted = sms && call && notify && alarm && listener
@@ -164,7 +165,9 @@ class MainActivity : ComponentActivity() {
         }
 
         // 3. Handle "Special" Permission: Notification Listener (for RCS)
-        val listenerEnabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+        val listenerEnabled =
+            Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+                ?.contains(packageName) == true
         if (!listenerEnabled) {
             startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
         }
@@ -200,13 +203,13 @@ fun StartUp(
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    label = { Text("Main") },
+                    label = { Text("Domů") },
                     icon = { Icon(Icons.Default.Home, contentDescription = null) }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    label = { Text("Settings") },
+                    label = { Text("Nastavení") },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) }
                 )
             }

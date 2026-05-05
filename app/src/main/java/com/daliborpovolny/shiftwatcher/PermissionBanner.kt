@@ -33,12 +33,12 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Permissions out of order",
+                        text = "Chybí vyžadovaná povolení",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = "Tap to grant SMS, Notification and Phone permissions for safety.\nYou might need to manually open the settings.",
+                        text = "Klikněte pro přidělení povoleních.\n Možná budete muset ručně otevřít Nastavení telefonu.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )

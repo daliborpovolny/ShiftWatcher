@@ -44,12 +44,12 @@ fun MainScreen(
                     },
                     modifier = Modifier.size(200.dp)
                 ) {
-                    Text("START SHIFT")
+                    Text("Začít směnu")
                 }
             }
 
             ShiftState.ACTIVE -> {
-                Text("Next Check-in in:", style = MaterialTheme.typography.labelLarge)
+                Text("Další kontrola za:", style = MaterialTheme.typography.labelLarge)
                 Text(remainingTime, style = MaterialTheme.typography.displayLarge)
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -62,7 +62,7 @@ fun MainScreen(
                         context.startService(intent)
                     }
                 ) {
-                    Text("END SHIFT")
+                    Text("Ukončit směnu")
                 }
             }
 
@@ -78,13 +78,13 @@ fun MainScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = androidx.compose.ui.graphics.RectangleShape
                 ) {
-                    Text("I AM OKAY", style = MaterialTheme.typography.displayLarge)
+                    Text("Jsem v pořádku", style = MaterialTheme.typography.displayLarge)
                 }
             }
 
             ShiftState.ESCALATING -> {
                 Text(
-                    "Escalating, calling emergency contacts",
+                    "Escalating",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.error,
@@ -113,7 +113,7 @@ fun MainScreen(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 LazyColumn(
@@ -133,7 +133,7 @@ fun MainScreen(
 
             ShiftState.STOPPED_ESCALATION -> {
                 Text(
-                    "Escalation Stopped",
+                    "Eskalace ukončena",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
@@ -141,7 +141,7 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    "Activity Log",
+                    "Výpis událostí",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -170,7 +170,7 @@ fun MainScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("DISMISS")
+                    Text("Ukončit")
                 }
             }
         }

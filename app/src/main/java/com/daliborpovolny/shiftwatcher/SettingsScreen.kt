@@ -17,6 +17,15 @@ enum class ScreenType {
     Escalation, Info, Personal
 }
 
+fun ScreenTypeToCzechName(st: ScreenType): String {
+    return when (st) {
+        ScreenType.Escalation -> "Eskalace"
+        ScreenType.Info -> "Info"
+        ScreenType.Personal -> "Osobní"
+    }
+}
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewSettingsScreen(
@@ -31,10 +40,12 @@ fun NewSettingsScreen(
 
     var selectedType by remember { mutableStateOf(ScreenType.Personal) }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text("Nastavení", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- TOGGLE SWITCH ---
@@ -50,7 +61,7 @@ fun NewSettingsScreen(
                     onClick = { selectedType = type },
                     selected = selectedType == type
                 ) {
-                    Text(type.name)
+                    Text(ScreenTypeToCzechName(type))
                 }
             }
         }
@@ -70,8 +81,8 @@ fun NewSettingsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         val escalationInfo =
-            "List of contacts, that will be progressively be called top to bottom if an alarm is not dismissed within 15 minutes"
-        val infoInfo = "List of contacts, that will each be texted on the start and end of a shift"
+            "Seznam kontaktů, které budou postupně od vrchu kontaktovány, pokud nebude kontrolní budík odkliknut"
+        val infoInfo = "Seznam kontaktů, které budou pomocí SMS informovány o začátku a konci směny"
 
         Text(
             text = if (selectedType == ScreenType.Escalation) escalationInfo else infoInfo,
@@ -81,14 +92,14 @@ fun NewSettingsScreen(
         OutlinedTextField(
             value = newName,
             onValueChange = { newName = it },
-            label = { Text("Name") },
+            label = { Text("Jméno") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = newNumber,
             onValueChange = { newNumber = it },
-            label = { Text("Phone Number") },
+            label = { Text("Telefoní číslo ve formátu: +420777888999") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -107,7 +118,7 @@ fun NewSettingsScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
-            Text("Add to ${selectedType.name}")
+            Text("Přidat do ${ScreenTypeToCzechName(selectedType)}")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -177,10 +188,10 @@ fun EscalationContactRow(
             // Sorting Buttons
             Column {
                 IconButton(onClick = onMoveUp, enabled = !isFirst) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Posunout nahoru")
                 }
                 IconButton(onClick = onMoveDown, enabled = !isLast) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down")
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Posunout dolů")
                 }
             }
 
@@ -188,7 +199,7 @@ fun EscalationContactRow(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = "Smazat",
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -222,7 +233,7 @@ fun InfoContactRow(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = "Smazat",
                     tint = MaterialTheme.colorScheme.error
                 )
             }
