@@ -38,18 +38,12 @@ fun PermissionBanner(onGrantClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = "Tap to grant SMS and Phone permissions for safety.",
+                        text = "Tap to grant SMS, Notification and Phone permissions for safety.\nYou might need to manually open the settings.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
-//            Text(
-//                text = "FIX",
-//                style = MaterialTheme.typography.labelLarge,
-//                color = MaterialTheme.colorScheme.error,
-//                modifier = Modifier.padding(start = 8.dp)
-//            )
         }
     }
 }

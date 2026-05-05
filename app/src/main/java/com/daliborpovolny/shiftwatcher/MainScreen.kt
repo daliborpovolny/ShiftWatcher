@@ -87,6 +87,10 @@ fun MainScreen(
                 )
 
             }
+
+            ShiftState.STOPPED_ESCALATION -> {
+                Text("Escalation stopped")
+            }
         }
     }
 }

@@ -8,6 +8,9 @@ interface ContactDao {
     @Query("SELECT * FROM escalation_contacts ORDER BY priority ASC")
     fun getAllEscalationContacts(): Flow<List<EscalationContact>>
 
+    @Query("SELECT * FROM escalation_contacts ORDER BY priority ASC")
+    fun getAllEscalationContactsSync(): List<EscalationContact>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEscalationContact(escalationContact: EscalationContact)
 
@@ -20,6 +23,9 @@ interface ContactDao {
 
     @Query("SELECT * FROM info_contacts ORDER BY name ASC")
     fun getAllInfoContacts(): Flow<List<InfoContact>>
+
+    @Query("SELECT * FROM info_contacts ORDER BY name ASC")
+    fun getAllInfoContactsSync(): List<InfoContact>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInfoContact(infoContact: InfoContact)

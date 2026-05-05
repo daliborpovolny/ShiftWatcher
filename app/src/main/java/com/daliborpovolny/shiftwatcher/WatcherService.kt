@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.media.*
 import android.os.*
+import android.telephony.SmsManager
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.*
 
 // Testing values
 const val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 1000L
@@ -17,7 +19,9 @@ enum class ShiftState {
     INACTIVE,
     ACTIVE,
     ALARMING,
-    ESCALATING
+    ESCALATING,
+
+    STOPPED_ESCALATION
 }
 
 class WatcherService : Service() {
@@ -30,11 +34,15 @@ class WatcherService : Service() {
         const val ACTION_ESCALATE = "ESCALATE"
         const val ACTION_END_SHIFT = "END_SHIFT"
 
+        const val ACTION_STOP_ESCALATION = "STOP_ESCALATION"
+
         const val FOREGROUND_NOTIFICATION_ID = 1
         const val ALARM_NOTIFICATION_ID = 2
 
         var currentState by mutableStateOf(ShiftState.INACTIVE)
         var remainingSeconds by mutableIntStateOf(3600)
+
+        var escalationStatus by mutableStateOf("")
     }
 
     private var ringtone: Ringtone? = null
@@ -57,6 +65,8 @@ class WatcherService : Service() {
         when (action) {
             ACTION_START_SHIFT -> {
                 if (currentState == ShiftState.INACTIVE) {
+                    sendShiftStartSms()
+
                     if (scheduleNextCheckIn()) {
                         currentState = ShiftState.ACTIVE
                     } else {
@@ -78,14 +88,23 @@ class WatcherService : Service() {
 
             ACTION_ESCALATE -> {
                 currentState = ShiftState.ESCALATING
-                executeEscalation()
+//                executeEscalation()
+                executeSmsWaitCallSequence()
             }
 
             ACTION_END_SHIFT -> {
                 currentState = ShiftState.INACTIVE
                 cancelAllAlarms()
+                sendShiftEndSms()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
+            }
+
+            ACTION_STOP_ESCALATION -> {
+                currentState = ShiftState.STOPPED_ESCALATION
+                cancelAllAlarms()
+
+                Log.d("WatcherService", "Escalation stopped")
             }
         }
         return START_STICKY
@@ -214,13 +233,13 @@ class WatcherService : Service() {
         scheduleNextCheckIn()
     }
 
-    private fun executeEscalation() {
-        // Logic for SMS/Calling goes here.
-        Log.e("WatcherService", "ESCALATION TRIGGERED. Contacting list.")
-
-        // Decide if ringtone should keep playing or stop during escalation
-        ringtone?.stop()
-    }
+//    private fun executeEscalation() {
+//        // Logic for SMS/Calling goes here.
+//        Log.e("WatcherService", "ESCALATION TRIGGERED. Contacting list.")
+//
+//        // Decide if ringtone should keep playing or stop during escalation
+//        ringtone?.stop()
+//    }
 
     private fun cancelAllAlarms() {
         // 1. Stop the visual UI ticker
@@ -266,4 +285,184 @@ class WatcherService : Service() {
             }
         }.start()
     }
+
+    //* SMS and Call Stuff
+
+    // test escalation policy -> only texts each person in the escalation list
+    private fun executeEscalation() {
+        Log.e("WatcherService", "ESCALATION TRIGGERED. Contacting escalation list.")
+
+        val db = (application as ShiftWatcherApp).database
+        val contactDao = db.contactDao()
+
+        // Launch in a Coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+
+            val contacts = contactDao.getAllEscalationContactsSync()
+
+            if (contacts.isEmpty()) {
+                Log.e("WatcherService", "No escalation contacts found!")
+                return@launch
+            }
+
+            val message =
+                "EMERGENCY: \$name has missed a safety check-in on Shift Watcher and is not responding."
+
+            contacts.forEach { contact ->
+                try {
+                    sendSms(contact.number, message)
+                    Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
+
+                    // Wait 1 second between messages to avoid spam filters
+                    delay(1000)
+                } catch (e: Exception) {
+                    Log.e(
+                        "WatcherService",
+                        "Failed to send Escalation SMS to ${contact.name}: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun makeEmergencyCall(phoneNumber: String) {
+        val intent = Intent(Intent.ACTION_CALL).apply {
+            data = android.net.Uri.parse("tel:$phoneNumber")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+
+        try {
+            startActivity(intent)
+        } catch (e: SecurityException) {
+            Log.e("WatcherService", "Permission denied for calling!")
+        }
+    }
+
+    // potential escalation policy -> calls sequentially each number in the escalation contact list, if it receives a text message back within 3 minutes it stops the escalation
+    private fun executeSmsWaitCallSequence() {
+        Log.d("WatcherService", "SmsCallDetect Escalation Sequence initiated")
+
+        val db = (application as ShiftWatcherApp).database
+        val contactDao = db.contactDao()
+
+        CoroutineScope(Dispatchers.IO).launch {
+
+
+            val contacts = contactDao.getAllEscalationContactsSync()
+
+            val waitTimeMs = 3 * 60 * 1000L // 3 minutes
+
+            contacts.forEach { contact ->
+                escalationStatus = "Texting ${contact.name}..."
+                sendSms(
+                    contact.number,
+                    "EMERGENCY: \$name needs help. Please reply to this text to stop escalation."
+                )
+                Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
+
+
+                makeEmergencyCall(contact.number)
+
+                escalationStatus = "Waiting for ${contact.name} to reply..."
+
+                // Here is the "Wait for X time" logic
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < waitTimeMs) {
+                    if (currentState == ShiftState.ACTIVE) {
+                        Log.d("WatcherService", "Escalation detected STOP action. Exiting sequence.")
+                        escalationStatus = "Escalation stopped by reply."
+                        return@launch // EXIT ENTIRE SEQUENCE
+                    }
+                    delay(2000) // Check state every 2 seconds
+                }
+
+                // If we reach here, no one stopped the alarm, so we call
+                escalationStatus = "No reply. Calling ${contact.name}..."
+                delay(30000)
+            }
+        }
+    }
+
+    private fun sendShiftStartSms() {
+        // 1. Get your DB and contacts
+        val db = (application as ShiftWatcherApp).database
+        val contactDao = db.contactDao()
+
+        // 2. Launch in a Coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+
+            val contacts = contactDao.getAllInfoContactsSync()
+
+            if (contacts.isEmpty()) {
+                Log.e("WatcherService", "No info contacts found!")
+                return@launch
+            }
+
+            val message =
+                "INFO: \$name has BEGUN their shift."
+
+            contacts.forEach { contact ->
+                try {
+                    sendSms(contact.number, message)
+                    Log.d("WatcherService", "Info SMS sent to ${contact.name}")
+
+                    // Wait 1 second between messages to avoid spam filters
+                    delay(1000)
+                } catch (e: Exception) {
+                    Log.e(
+                        "WatcherService",
+                        "Failed to send Info SMS to ${contact.name}: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun sendShiftEndSms() {
+
+        val db = (application as ShiftWatcherApp).database
+        val contactDao = db.contactDao()
+
+        // Launch in a Coroutine
+        CoroutineScope(Dispatchers.IO).launch {
+
+            val contacts = contactDao.getAllInfoContactsSync()
+
+            if (contacts.isEmpty()) {
+                Log.e("WatcherService", "No info contacts found!")
+                return@launch
+            }
+
+            val message =
+                "INFO: \$name has ENDED their a shift."
+
+            contacts.forEach { contact ->
+                try {
+                    sendSms(contact.number, message)
+                    Log.d("WatcherService", "Info SMS sent to ${contact.name}")
+
+                    // Wait 1 second between messages to avoid spam filters
+                    delay(1000)
+                } catch (e: Exception) {
+                    Log.e(
+                        "WatcherService",
+                        "Failed to send Info SMS to ${contact.name}: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+
+    private fun sendSms(phoneNumber: String, message: String) {
+        val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            this.getSystemService(SmsManager::class.java)
+        } else {
+            SmsManager.getDefault()
+        }
+
+        val parts = smsManager.divideMessage(message)
+        smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
+    }
+
 }

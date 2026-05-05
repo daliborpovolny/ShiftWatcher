@@ -105,10 +105,13 @@ class MainActivity : ComponentActivity() {
     private fun updatePermissionState() {
         val context = this
 
-        // Check SMS & Call
+        // Check SMS (Both Send and Receive) & Call
         val sms = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.SEND_SMS
+        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECEIVE_SMS
         ) == PackageManager.PERMISSION_GRANTED
         val call = ContextCompat.checkSelfPermission(
             context,
@@ -129,8 +132,11 @@ class MainActivity : ComponentActivity() {
             alarmManager.canScheduleExactAlarms()
         } else true
 
+        // Check if Notification Listener is enabled (for RCS support)
+        val listener = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+
         // Only set to true if EVERY critical permission is ok
-        arePermissionsGranted = sms && call && notify && alarm
+        arePermissionsGranted = sms && call && notify && alarm && listener
         println("permission state:$arePermissionsGranted")
     }
 
@@ -138,14 +144,15 @@ class MainActivity : ComponentActivity() {
         // 1. Handle "Dangerous" Permissions (The Popup)
         val dangerousPermissions = mutableListOf(
             Manifest.permission.SEND_SMS,
-            Manifest.permission.CALL_PHONE
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.READ_PHONE_STATE,
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             dangerousPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
 
         // 2. Handle "Special" Permission: Exact Alarm (Android 12+)
-        // This takes the user to a specific system page just for your app
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(AlarmManager::class.java)
             if (!alarmManager.canScheduleExactAlarms()) {
@@ -153,11 +160,16 @@ class MainActivity : ComponentActivity() {
                     data = Uri.fromParts("package", packageName, null)
                 }
                 startActivity(intent)
-                // Return early or continue to request others
             }
         }
 
-        // 3. Launch the standard popup for SMS/Call/Notifications
+        // 3. Handle "Special" Permission: Notification Listener (for RCS)
+        val listenerEnabled = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")?.contains(packageName) == true
+        if (!listenerEnabled) {
+            startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+        }
+
+        // 4. Launch the standard popup for SMS/Call/Notifications
         requestPermissionLauncher.launch(dangerousPermissions.toTypedArray())
     }
 

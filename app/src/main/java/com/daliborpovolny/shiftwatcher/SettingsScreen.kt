@@ -13,8 +13,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
 
-enum class ContactType {
-    Escalation, Info
+enum class ScreenType {
+    Escalation, Info, Personal
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,23 +29,23 @@ fun NewSettingsScreen(
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
-    var selectedType by remember { mutableStateOf(ContactType.Info) }
+    var selectedType by remember { mutableStateOf(ScreenType.Personal) }
 
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)) {
-        Text("Contact Book", style = MaterialTheme.typography.headlineMedium)
+        Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- TOGGLE SWITCH ---
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier.fillMaxWidth()
         ) {
-            ContactType.entries.forEachIndexed { index, type ->
+            ScreenType.entries.forEachIndexed { index, type ->
                 SegmentedButton(
                     shape = SegmentedButtonDefaults.itemShape(
                         index = index,
-                        count = ContactType.entries.size
+                        count = ScreenType.entries.size
                     ),
                     onClick = { selectedType = type },
                     selected = selectedType == type
@@ -56,6 +56,11 @@ fun NewSettingsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        if (selectedType == ScreenType.Personal) {
+            personalDetails()
+            return
+        }
 
         Text(
             text = "Add to the ${selectedType.name} List",
@@ -69,7 +74,7 @@ fun NewSettingsScreen(
         val infoInfo = "List of contacts, that will each be texted on the start and end of a shift"
 
         Text(
-            text = if (selectedType == ContactType.Escalation) escalationInfo else infoInfo,
+            text = if (selectedType == ScreenType.Escalation) escalationInfo else infoInfo,
             style = MaterialTheme.typography.bodySmall
         )
 
@@ -90,7 +95,7 @@ fun NewSettingsScreen(
         Button(
             onClick = {
                 if (newNumber.isNotBlank() && newName.isNotBlank()) {
-                    if (selectedType == ContactType.Escalation) {
+                    if (selectedType == ScreenType.Escalation) {
                         escalationContactsManipulator.add(newName, newNumber)
                     } else {
                         infoContactsManipulator.add(newName, newNumber)
@@ -107,7 +112,7 @@ fun NewSettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (selectedType == ContactType.Escalation) {
+        if (selectedType == ScreenType.Escalation) {
             LazyColumn(modifier = Modifier.weight(1f)) {
                 itemsIndexed(
                     escalationContacts,
@@ -136,6 +141,13 @@ fun NewSettingsScreen(
 
     }
 }
+
+@Composable
+fun personalDetails(
+) {
+    Text("Fullname:")
+}
+
 
 @Composable
 fun EscalationContactRow(
