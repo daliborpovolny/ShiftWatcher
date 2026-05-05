@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
                 val escalationContacts by viewModel.escalationContacts.collectAsState()
                 val infoContacts by viewModel.infoContacts.collectAsState()
+                val userName by viewModel.userName.collectAsState()
 
                 val escalationManipulator = object : EscalationContactManipulator {
                     override fun add(name: String, number: String) {
@@ -97,6 +98,8 @@ class MainActivity : ComponentActivity() {
                     infoContacts = infoContacts,
                     escalationContactsManipulator = escalationManipulator,
                     infoContactsManipulator = infoManipulator,
+                    userName = userName,
+                    onUserNameChange = viewModel::updateUserName
                 )
             }
         }
@@ -191,7 +194,8 @@ fun StartUp(
     infoContactsManipulator: InfoContactManipulator,
     escalationContacts: List<EscalationContact>,
     escalationContactsManipulator: EscalationContactManipulator,
-
+    userName: String?,
+    onUserNameChange: (String) -> Unit
     ) {
     // This state tracks which tab is selected
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -237,7 +241,9 @@ fun StartUp(
                         escalationContacts = escalationContacts,
                         infoContacts = infoContacts,
                         escalationContactsManipulator = escalationContactsManipulator,
-                        infoContactsManipulator = infoContactsManipulator
+                        infoContactsManipulator = infoContactsManipulator,
+                        userName = userName,
+                        onUserNameChange = onUserNameChange
                     )
                 }
             }
@@ -276,6 +282,8 @@ fun HomePagePreview() {
             infoContactsManipulator = dummyInfoManipulator,
             showPermissionBanner = true,
             onResolvePermissions = {},
+            userName = "Dalibor",
+            onUserNameChange = {}
         )
     }
 }

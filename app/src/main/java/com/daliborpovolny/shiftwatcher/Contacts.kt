@@ -19,6 +19,12 @@ data class InfoContact(
 //    val priority: Int = 0
 )
 
+@Entity(tableName = "user_settings")
+data class UserSetting(
+    @PrimaryKey val key: String,
+    val value: String
+)
+
 interface EscalationContactManipulator {
     fun add(name: String, number: String)
     fun delete(contact: EscalationContact)

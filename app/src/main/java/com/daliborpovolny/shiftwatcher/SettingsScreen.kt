@@ -33,8 +33,9 @@ fun NewSettingsScreen(
     infoContactsManipulator: InfoContactManipulator,
     escalationContacts: List<EscalationContact>,
     escalationContactsManipulator: EscalationContactManipulator,
-
-    ) {
+    userName: String?,
+    onUserNameChange: (String) -> Unit
+) {
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
@@ -69,7 +70,10 @@ fun NewSettingsScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (selectedType == ScreenType.Personal) {
-            personalDetails()
+            PersonalDetails(
+                userName = userName ?: "",
+                onUserNameChange = onUserNameChange
+            )
             return
         }
 
@@ -154,9 +158,34 @@ fun NewSettingsScreen(
 }
 
 @Composable
-fun personalDetails(
+fun PersonalDetails(
+    userName: String,
+    onUserNameChange: (String) -> Unit
 ) {
-    Text("Fullname:")
+    var tempName by remember(userName) { mutableStateOf(userName) }
+
+    Column {
+        Text("Osobní údaje", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = tempName,
+            onValueChange = { tempName = it },
+            label = { Text("Vaše jméno") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { onUserNameChange(tempName) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Uložit jméno")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Toto jméno bude použito v SMS zprávách zasílaných vašim kontaktům.",
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
 }
 
 
@@ -270,8 +299,9 @@ fun SettingsPreview() {
                 InfoContact(number = "987 654 321", name = "Paul MacCartney")
             ),
             escalationContactsManipulator = dummyEscalationManipulator,
-            infoContactsManipulator = dummyInfoManipulator
-
+            infoContactsManipulator = dummyInfoManipulator,
+            userName = "...",
+            onUserNameChange = {}
         )
     }
 }

@@ -76,6 +76,17 @@ class ContactViewModel(private val dao: ContactDao) : ViewModel() {
         viewModelScope.launch { dao.deleteInfoContact(infoContact) }
     }
 
+    //* User Settings
+
+    val userName = dao.getUserSettingFlow("user_name")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun updateUserName(name: String) {
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("user_name", name))
+        }
+    }
+
 
     // Factory to help Android create the ViewModel with the DAO
     class Factory(private val dao: ContactDao) : ViewModelProvider.Factory {

@@ -112,7 +112,7 @@ class WatcherService : Service() {
                 cancelAllAlarms()
 
                 Log.d("WatcherService", "Escalation stopped")
-                addEscalationLog("Escalation stopped by user")
+                addEscalationLog("Eskalace přerušena odkliknutím na telefonu")
             }
 
             ACTION_END_MESSAGE_RECEIVED -> {
@@ -123,7 +123,7 @@ class WatcherService : Service() {
                     cancelAllAlarms()
 
                     Log.d("WatcherService", "stopped escalation")
-                    addEscalationLog("Escalation stopped by reply")
+                    addEscalationLog("Eskalace přerušena díky přijaté zprávě")
                 }
 
             }
@@ -335,7 +335,7 @@ class WatcherService : Service() {
                 try {
                     sendSms(contact.number, message)
                     Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
-                    addEscalationLog("Escalation SMS sent to ${contact.name}")
+                    addEscalationLog("Sms s upozorněním poslána kontaktu ${contact.name}")
 
                     // Wait 1 second between messages to avoid spam filters
                     delay(1000)
@@ -344,7 +344,7 @@ class WatcherService : Service() {
                         "WatcherService",
                         "Failed to send Escalation SMS to ${contact.name}: ${e.message}"
                     )
-                    addEscalationLog("Failed to send SMS to ${contact.name}")
+                    addEscalationLog("Nepodařilo se poslat sms kontaktu ${contact.name}")
                 }
             }
         }
@@ -360,14 +360,14 @@ class WatcherService : Service() {
             startActivity(intent)
         } catch (e: SecurityException) {
             Log.e("WatcherService", "Permission denied for calling!")
-            addEscalationLog("Permission denied for calling!")
+            addEscalationLog("Chybí povolení k volání!")
         }
     }
 
     // potential escalation policy -> calls sequentially each number in the escalation contact list, if it receives a text message back within 3 minutes it stops the escalation
     private fun executeSmsWaitCallSequence() {
         Log.d("WatcherService", "SmsCallDetect Escalation Sequence initiated")
-        addEscalationLog("Escalation sequence initiated")
+        addEscalationLog("Eskalace zahájena")
 
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
@@ -376,24 +376,26 @@ class WatcherService : Service() {
 
 
             val contacts = contactDao.getAllEscalationContactsSync()
+            val name = contactDao.getUserSetting("user_name")
+
 
             val waitTimeMs = 3 * 60 * 1000L // 3 minutes
 
             contacts.forEach { contact ->
                 if (currentState != ShiftState.ESCALATING) return@launch
 
-                addEscalationLog("Texting ${contact.name}...")
+                addEscalationLog("Sms poslána kontaktu ${contact.name}...")
                 sendSms(
                     contact.number,
-                    "EMERGENCY: Safety check-in missed. Please reply to stop escalation."
+                    "POZOR: $name zmeškal/a budík. Odepište se slovy 'stop', aby se eskalace přerušila"
                 )
                 Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
 
 
-                addEscalationLog("Calling ${contact.name}...")
+                addEscalationLog("Prozvánění ${contact.name}...")
                 makeEmergencyCall(contact.number)
 
-                addEscalationLog("Waiting for ${contact.name} to reply...")
+                addEscalationLog("Čekání na odpověd od ${contact.name}")
 
                 // Here is the "Wait for X time" logic
                 val startTime = System.currentTimeMillis()
@@ -409,9 +411,9 @@ class WatcherService : Service() {
                 }
 
                 // If we reach here, no one stopped the alarm, so we call
-                addEscalationLog("No response from ${contact.name}")
+                addEscalationLog("Žádná odpověd od ${contact.name}")
             }
-            addEscalationLog("Escalation sequence completed.")
+            addEscalationLog("Všechny kontakty kontaktovány.")
         }
     }
 
@@ -430,8 +432,10 @@ class WatcherService : Service() {
                 return@launch
             }
 
+            val name = contactDao.getUserSetting("user_name")
+
             val message =
-                "INFO: \$name has BEGUN their shift."
+                "INFO: $name začal/a svou směnu."
 
             contacts.forEach { contact ->
                 try {
@@ -465,8 +469,10 @@ class WatcherService : Service() {
                 return@launch
             }
 
+            val name = contactDao.getUserSetting("user_name")
+
             val message =
-                "INFO: \$name has ENDED their a shift."
+                "INFO: $name skončil/a svou směnu."
 
             contacts.forEach { contact ->
                 try {

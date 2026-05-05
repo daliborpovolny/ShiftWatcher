@@ -35,4 +35,13 @@ interface ContactDao {
 
     @Update
     suspend fun updateInfoContact(infoContact: InfoContact)
+
+    @Query("SELECT value FROM user_settings WHERE `key` = :key")
+    suspend fun getUserSetting(key: String): String?
+
+    @Query("SELECT value FROM user_settings WHERE `key` = :key")
+    fun getUserSettingFlow(key: String): Flow<String?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUserSetting(setting: UserSetting)
 }
