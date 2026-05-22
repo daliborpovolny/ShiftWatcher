@@ -1,8 +1,7 @@
 package com.daliborpovolny.shiftwatcher
 
 import android.app.*
-import android.content.Context
-import android.content.Intent
+import android.content.*
 import android.media.*
 import android.os.*
 import android.telephony.SmsManager
@@ -37,9 +36,9 @@ object ProdConfig : AppConfig {
 }
 
 object TestConfig : AppConfig {
-    override val PRIMARY_CHECKUP_INTERVAL_MS = 5_000L
-    override val ESCALATION_GRACE_PERIOD_MS = 5_000L
-    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 5_000L
+    override val PRIMARY_CHECKUP_INTERVAL_MS = 30_000L
+    override val ESCALATION_GRACE_PERIOD_MS = 15_000L
+    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 60_000L
 }
 
 val config = if (TEST) TestConfig else ProdConfig
@@ -79,8 +78,19 @@ class WatcherService : Service() {
         fun addEscalationLog(message: String) {
             escalationLogs.add(0, message)
         }
+
+        fun normalizePhoneNumber(number: String): String {
+            var clean = number.replace(Regex("[\\s\\-\\(\\)]"), "")
+            if (clean.length >= 9) {
+                clean = clean.takeLast(9)
+            }
+            return clean
+        }
     }
 
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var vibrator: Vibrator? = null
     private var ringtone: Ringtone? = null
     private var countDownTimer: CountDownTimer? = null
     private lateinit var alarmManager: AlarmManager
@@ -89,6 +99,18 @@ class WatcherService : Service() {
         super.onCreate()
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         createNotificationChannels()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
+        vibrator?.cancel()
+        ringtone?.stop()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -146,16 +168,13 @@ class WatcherService : Service() {
             }
 
             ACTION_END_MESSAGE_RECEIVED -> {
-                Log.d("WatcherService", "END_MESSAGE_RECEIVED received")
+                val sender = intent?.getStringExtra("sender")
+                val message = intent?.getStringExtra("message")
+                Log.d("WatcherService", "END_MESSAGE_RECEIVED received from $sender: $message")
 
                 if (currentState == ShiftState.ESCALATING) {
-                    currentState = ShiftState.STOPPED_ESCALATION
-                    cancelAllAlarms()
-
-                    Log.d("WatcherService", "stopped escalation")
-                    addEscalationLog("Eskalace přerušena díky přijaté zprávě")
+                    processIncomingCancellation(sender, message)
                 }
-
             }
 
         }
@@ -233,7 +252,30 @@ class WatcherService : Service() {
         ringtone = RingtoneManager.getRingtone(this, alarmUri)?.apply {
             audioAttributes =
                 AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                isLooping = true
+            }
             play()
+        }
+
+        // Trigger Vibration
+        val vibService = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager =
+                getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+        vibrator = vibService
+        vibService?.let {
+            val pattern = longArrayOf(0, 1000, 1000) // vibrate 1s, pause 1s
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                it.vibrate(VibrationEffect.createWaveform(pattern, 0)) // 0 means repeat
+            } else {
+                @Suppress("DEPRECATION")
+                it.vibrate(pattern, 0)
+            }
         }
 
         // 2. Schedule Escalation (Using the correct action string)
@@ -275,6 +317,7 @@ class WatcherService : Service() {
 
     private fun stopAlarmAndReset() {
         ringtone?.stop()
+        vibrator?.cancel()
 
         // Remove the loud notification from the screen
         getSystemService(NotificationManager::class.java).cancel(ALARM_NOTIFICATION_ID)
@@ -307,6 +350,14 @@ class WatcherService : Service() {
 
         // 4. Cleanup media and notifications
         ringtone?.stop()
+        vibrator?.cancel()
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
+        wakeLock = null
+
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(ALARM_NOTIFICATION_ID)
@@ -338,7 +389,78 @@ class WatcherService : Service() {
         }.start()
     }
 
-    //* SMS and Call Stuff
+    private fun getBatteryInfo(): String {
+        val batteryStatus: Intent? =
+            registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val pct = if (level >= 0 && scale > 0) (level * 100 / scale.toFloat()).toInt() else -1
+
+        val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging =
+            status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+
+        val chargeMethod = batteryStatus?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) ?: -1
+        val chargeType = when (chargeMethod) {
+            BatteryManager.BATTERY_PLUGGED_AC -> " (síť)"
+            BatteryManager.BATTERY_PLUGGED_USB -> " (USB)"
+            BatteryManager.BATTERY_PLUGGED_WIRELESS -> " (bezdrát)"
+            else -> ""
+        }
+
+        val chargingStr = if (isCharging) "nabíjí se$chargeType" else "nenabíjí se"
+        val pctStr = if (pct >= 0) "$pct%" else "neznámo"
+        return "Stav baterie: $pctStr ($chargingStr)"
+    }
+
+    private fun processIncomingCancellation(sender: String?, message: String?) {
+        if (sender.isNullOrBlank() || message.isNullOrBlank()) return
+
+        val normalizedMsg = message.trim().lowercase()
+        val approvedPhrases = listOf("zastavit eskalaci", "stop eskalaci", "stop escalation")
+
+        // 1. Verify keyword matching
+        if (approvedPhrases.none { normalizedMsg.contains(it) }) {
+            Log.d(
+                "WatcherService",
+                "Incoming message doesn't contain any approved cancellation phrases."
+            )
+            return
+        }
+
+        // 2. Verify sender in escalation list
+        val db = (application as ShiftWatcherApp).database
+        val contactDao = db.contactDao()
+
+        serviceScope.launch {
+            val contacts = contactDao.getAllEscalationContactsSync()
+            val normalizedSender = normalizePhoneNumber(sender)
+
+            val isEscalationContact = contacts.any { contact ->
+                normalizePhoneNumber(contact.number) == normalizedSender ||
+                        contact.name.equals(sender, ignoreCase = true)
+            }
+
+            //TODO Should only the contacts from the escalation list be able to stop escalation?
+            if (isEscalationContact || true) {
+                withContext(Dispatchers.Main) {
+                    currentState = ShiftState.STOPPED_ESCALATION
+                    cancelAllAlarms()
+                    Log.d(
+                        "WatcherService",
+                        "Escalation stopped by message from verified contact: $sender"
+                    )
+                    addEscalationLog("Eskalace přerušena díky přijaté zprávě od ${sender}")
+                }
+            } else {
+                Log.w(
+                    "WatcherService",
+                    "Match found for phrase, but sender '$sender' is not in the escalation contact list."
+                )
+                addEscalationLog("Pokus o přerušení od neznámého čísla: $sender")
+            }
+        }
+    }
 
     // test escalation policy -> only texts each person in the escalation list
     private fun executeEscalation() {
@@ -347,9 +469,7 @@ class WatcherService : Service() {
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
 
-        // Launch in a Coroutine
-        CoroutineScope(Dispatchers.IO).launch {
-
+        serviceScope.launch {
             val contacts = contactDao.getAllEscalationContactsSync()
 
             if (contacts.isEmpty()) {
@@ -402,58 +522,71 @@ class WatcherService : Service() {
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        // Acquire WakeLock to keep CPU awake during critical safety escalation
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "ShiftWatcher:EscalationWakeLock"
+        ).apply {
+            acquire(15 * 60 * 1000L) // 15 minutes limit as a safety backup
+        }
 
+        serviceScope.launch {
+            try {
+                val contacts = contactDao.getAllEscalationContactsSync()
+                val name = contactDao.getUserSetting("user_name") ?: "Zaměstnanec"
 
-            val contacts = contactDao.getAllEscalationContactsSync()
-            val name = contactDao.getUserSetting("user_name")
+                val waitTimeMs = config.ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS
 
-            val waitTimeMs = config.ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS
+                contacts.forEach { contact ->
+                    if (currentState != ShiftState.ESCALATING) return@launch
 
-            contacts.forEach { contact ->
-                if (currentState != ShiftState.ESCALATING) return@launch
+                    addEscalationLog("Sms poslána kontaktu ${contact.name}...")
+                    sendSms(
+                        contact.number,
+                        "POZOR: $name zmeškal/a budík. Odepište 'zastavit eskalaci', 'stop eskalaci' nebo 'stop escalation', aby se eskalace přerušila."
+                    )
+                    Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
 
-                addEscalationLog("Sms poslána kontaktu ${contact.name}...")
-                sendSms(
-                    contact.number,
-                    "POZOR: $name zmeškal/a budík. Odepište se slovy 'stop', aby se eskalace přerušila"
-                )
-                Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
+                    addEscalationLog("Prozvánění ${contact.name}...")
+                    makeEmergencyCall(contact.number)
 
+                    addEscalationLog("Čekání na odpověd od ${contact.name}")
 
-                addEscalationLog("Prozvánění ${contact.name}...")
-                makeEmergencyCall(contact.number)
-
-                addEscalationLog("Čekání na odpověd od ${contact.name}")
-
-                // Here is the "Wait for X time" logic
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < waitTimeMs) {
-                    if (currentState == ShiftState.ACTIVE || currentState == ShiftState.STOPPED_ESCALATION || currentState == ShiftState.INACTIVE) {
-                        Log.d(
-                            "WatcherService",
-                            "Escalation sequence interrupted. Exiting."
-                        )
-                        return@launch
+                    // Here is the "Wait for X time" logic
+                    val startTime = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startTime < waitTimeMs) {
+                        if (currentState == ShiftState.ACTIVE || currentState == ShiftState.STOPPED_ESCALATION || currentState == ShiftState.INACTIVE) {
+                            Log.d(
+                                "WatcherService",
+                                "Escalation sequence interrupted. Exiting."
+                            )
+                            return@launch
+                        }
+                        delay(2000) // Check state every 2 seconds
                     }
-                    delay(2000) // Check state every 2 seconds
-                }
 
-                // Waited and received no answer, logging and moving to the next one
-                addEscalationLog("Žádná odpověd od ${contact.name}")
+                    // Waited and received no answer, logging and moving to the next one
+                    addEscalationLog("Žádná odpověd od ${contact.name}")
+                }
+                addEscalationLog("Všechny kontakty kontaktovány, žádná odpověd.")
+            } finally {
+                // Safely release the wakeLock when the coroutine is cancelled or finishes
+                wakeLock?.let {
+                    if (it.isHeld) {
+                        it.release()
+                    }
+                }
+                wakeLock = null
             }
-            addEscalationLog("Všechny kontakty kontaktovány, žádná odpověd.")
         }
     }
 
     private fun sendShiftStartSms() {
-        // 1. Get your DB and contacts
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
 
-        // 2. Launch in a Coroutine
-        CoroutineScope(Dispatchers.IO).launch {
-
+        serviceScope.launch {
             val contacts = contactDao.getAllInfoContactsSync()
 
             if (contacts.isEmpty()) {
@@ -461,10 +594,9 @@ class WatcherService : Service() {
                 return@launch
             }
 
-            val name = contactDao.getUserSetting("user_name")
-
-            val message =
-                "INFO: $name začal/a svou směnu."
+            val name = contactDao.getUserSetting("user_name") ?: "Zaměstnanec"
+            val batteryInfo = getBatteryInfo()
+            val message = "INFO: $name začal/a svou směnu. $batteryInfo"
 
             contacts.forEach { contact ->
                 try {
@@ -484,13 +616,10 @@ class WatcherService : Service() {
     }
 
     private fun sendShiftEndSms() {
-
         val db = (application as ShiftWatcherApp).database
         val contactDao = db.contactDao()
 
-        // Launch in a Coroutine
-        CoroutineScope(Dispatchers.IO).launch {
-
+        serviceScope.launch {
             val contacts = contactDao.getAllInfoContactsSync()
 
             if (contacts.isEmpty()) {
@@ -498,10 +627,9 @@ class WatcherService : Service() {
                 return@launch
             }
 
-            val name = contactDao.getUserSetting("user_name")
-
-            val message =
-                "INFO: $name skončil/a svou směnu."
+            val name = contactDao.getUserSetting("user_name") ?: "Zaměstnanec"
+            val batteryInfo = getBatteryInfo()
+            val message = "INFO: $name skončil/a svou směnu. $batteryInfo"
 
             contacts.forEach { contact ->
                 try {

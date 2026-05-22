@@ -33,11 +33,13 @@ class SmsNotificationListener : NotificationListenerService() {
 
         // Only react to messaging apps or common SMS apps if you want to filter noise
         // But for safety, checking everything is more reliable for custom RCS apps
-        if (body.contains("ok") || body.contains("stop") || body.contains("got it")) {
-            Log.i("SmsNotificationListener", "Keyword detected in notification. Stopping alarm.")
+        if (body.contains("zastavit eskalaci") || body.contains("stop eskalaci") || body.contains("stop escalation")) {
+            Log.i("SmsNotificationListener", "Keyword detected in notification. Triggering verification.")
 
             val serviceIntent = Intent(this, WatcherService::class.java).apply {
                 action = WatcherService.ACTION_END_MESSAGE_RECEIVED
+                putExtra("sender", title)
+                putExtra("message", body)
             }
 
             try {

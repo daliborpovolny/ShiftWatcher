@@ -25,11 +25,13 @@ class SmsReplyReceiver : BroadcastReceiver() {
             val body = sms.messageBody?.lowercase() ?: ""
             Log.d("SmsReplyReceiver", "SMS from ${sms.originatingAddress}: $body")
 
-            if (body.contains("ok") || body.contains("stop") || body.contains("got it")) {
-                Log.d("SmsReplyReceiver", "Keyword detected. Triggering escalation stop.")
+            if (body.contains("zastavit eskalaci") || body.contains("stop eskalaci") || body.contains("stop escalation")) {
+                Log.d("SmsReplyReceiver", "Keyword detected. Triggering verification.")
 
                 val serviceIntent = Intent(context, WatcherService::class.java).apply {
                     action = WatcherService.ACTION_END_MESSAGE_RECEIVED
+                    putExtra("sender", sms.originatingAddress)
+                    putExtra("message", sms.messageBody)
                 }
 
                 try {
