@@ -78,7 +78,11 @@ fun MainScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = androidx.compose.ui.graphics.RectangleShape
                 ) {
-                    Text("Jsem v pořádku", style = MaterialTheme.typography.displayLarge, textAlign = TextAlign.Center)
+                    Text(
+                        "Jsem v pořádku",
+                        style = MaterialTheme.typography.displayLarge,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 
@@ -109,7 +113,7 @@ fun MainScreen(
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Text(
-                    "Výpis událostí",
+                    "Výpis událostí (nahoře nejnovější)",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.fillMaxWidth()
                 )

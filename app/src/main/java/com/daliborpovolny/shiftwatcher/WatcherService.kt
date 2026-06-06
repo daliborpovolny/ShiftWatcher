@@ -441,6 +441,11 @@ class WatcherService : Service() {
                         contact.name.equals(sender, ignoreCase = true)
             }
 
+            Log.d(
+                "WatcherService",
+                "Found the contact in Escalation contacts: $isEscalationContact"
+            )
+
             //TODO Should only the contacts from the escalation list be able to stop escalation?
             if (isEscalationContact || true) {
                 withContext(Dispatchers.Main) {
@@ -556,14 +561,14 @@ class WatcherService : Service() {
                     // Here is the "Wait for X time" logic
                     val startTime = System.currentTimeMillis()
                     while (System.currentTimeMillis() - startTime < waitTimeMs) {
-                        if (currentState == ShiftState.ACTIVE || currentState == ShiftState.STOPPED_ESCALATION || currentState == ShiftState.INACTIVE) {
+                        delay(2000) // Check state every 2 seconds
+                        if (currentState != ShiftState.ESCALATING) {
                             Log.d(
                                 "WatcherService",
                                 "Escalation sequence interrupted. Exiting."
                             )
                             return@launch
                         }
-                        delay(2000) // Check state every 2 seconds
                     }
 
                     // Waited and received no answer, logging and moving to the next one
