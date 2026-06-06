@@ -40,7 +40,9 @@ class SettingsScreenTest {
                     escalationContactsManipulator = dummyEscalationManipulator,
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
-                    onUserNameChange = {}
+                    onUserNameChange = {},
+                    useTestConfig = false,
+                    onUseTestConfigChange = {}
                 )
             }
         }
@@ -72,7 +74,9 @@ class SettingsScreenTest {
                     escalationContactsManipulator = dummyEscalationManipulator,
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
-                    onUserNameChange = {}
+                    onUserNameChange = {},
+                    useTestConfig = false,
+                    onUseTestConfigChange = {}
                 )
             }
         }
@@ -96,5 +100,48 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("111222333").assertIsDisplayed()
         // Escalation contact should NOT be here
         composeTestRule.onNodeWithText("John Lennon").assertDoesNotExist()
+    }
+
+    @Test
+    fun testSettingsScreenTestConfigToggleAndWarning() {
+        composeTestRule.setContent {
+            ShiftWatcherTheme {
+                NewSettingsScreen(
+                    escalationContacts = emptyList(),
+                    infoContacts = emptyList(),
+                    escalationContactsManipulator = dummyEscalationManipulator,
+                    infoContactsManipulator = dummyInfoManipulator,
+                    userName = "Dalibor",
+                    onUserNameChange = {},
+                    useTestConfig = false,
+                    onUseTestConfigChange = {}
+                )
+            }
+        }
+
+        // Verify that the config card is displayed
+        composeTestRule.onNodeWithText("Testovací konfigurace služby").assertIsDisplayed()
+        
+        // When toggle is false, it should show the regular config text
+        composeTestRule.onNodeWithText("V běžném režimu jsou intervaly nastaveny na standardní produkční hodnoty: kontrola každou 1 hodinu, eskalace po 15 minutách nečinnosti.").assertIsDisplayed()
+        
+        // Now set toggleValue to true and recompose (simulate it)
+        composeTestRule.setContent {
+            ShiftWatcherTheme {
+                NewSettingsScreen(
+                    escalationContacts = emptyList(),
+                    infoContacts = emptyList(),
+                    escalationContactsManipulator = dummyEscalationManipulator,
+                    infoContactsManipulator = dummyInfoManipulator,
+                    userName = "Dalibor",
+                    onUserNameChange = {},
+                    useTestConfig = true,
+                    onUseTestConfigChange = {}
+                )
+            }
+        }
+        
+        // It should display the warning text
+        composeTestRule.onNodeWithText("POZOR: Tato konfigurace zkracuje kontrolní intervaly na sekundy (30s kontrola, 15s eskalace) a slouží VÝHRADNĚ k ověření funkčnosti aplikace (SMS, hovory, reakce na zprávy). V ŽÁDNÉM PŘÍPADĚ ji nepoužívejte pro reálnou ochranu životních funkcí!").assertIsDisplayed()
     }
 }

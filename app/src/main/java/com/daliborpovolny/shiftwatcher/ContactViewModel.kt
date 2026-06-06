@@ -87,6 +87,15 @@ class ContactViewModel(private val dao: ContactDao) : ViewModel() {
         }
     }
 
+    val useTestConfig = dao.getUserSettingFlow("use_test_config")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "false")
+
+    fun updateUseTestConfig(useTest: Boolean) {
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("use_test_config", useTest.toString()))
+        }
+    }
+
 
     // Factory to help Android create the ViewModel with the DAO
     class Factory(private val dao: ContactDao) : ViewModelProvider.Factory {

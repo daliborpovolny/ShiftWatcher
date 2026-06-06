@@ -34,7 +34,9 @@ fun NewSettingsScreen(
     escalationContacts: List<EscalationContact>,
     escalationContactsManipulator: EscalationContactManipulator,
     userName: String?,
-    onUserNameChange: (String) -> Unit
+    onUserNameChange: (String) -> Unit,
+    useTestConfig: Boolean,
+    onUseTestConfigChange: (Boolean) -> Unit
 ) {
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
@@ -72,7 +74,9 @@ fun NewSettingsScreen(
         if (selectedType == ScreenType.Personal) {
             PersonalDetails(
                 userName = userName ?: "",
-                onUserNameChange = onUserNameChange
+                onUserNameChange = onUserNameChange,
+                useTestConfig = useTestConfig,
+                onUseTestConfigChange = onUseTestConfigChange
             )
             return
         }
@@ -160,7 +164,9 @@ fun NewSettingsScreen(
 @Composable
 fun PersonalDetails(
     userName: String,
-    onUserNameChange: (String) -> Unit
+    onUserNameChange: (String) -> Unit,
+    useTestConfig: Boolean,
+    onUseTestConfigChange: (Boolean) -> Unit
 ) {
     var tempName by remember(userName) { mutableStateOf(userName) }
 
@@ -185,6 +191,80 @@ fun PersonalDetails(
             "Toto jméno bude použito v SMS zprávách zasílaných vašim kontaktům.",
             style = MaterialTheme.typography.bodySmall
         )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- TEST SERVICE CONFIGURATION SECTION ---
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (useTestConfig) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Testovací konfigurace služby",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (useTestConfig) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (useTestConfig) "Aktivní (Zrychlené časy pro test)" else "Neaktivní (Běžný provoz)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = useTestConfig,
+                        onCheckedChange = onUseTestConfigChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.error,
+                            checkedTrackColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (useTestConfig) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Varování",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "POZOR: Tato konfigurace zkracuje kontrolní intervaly na sekundy (30s kontrola, 15s eskalace) a slouží VÝHRADNĚ k ověření funkčnosti aplikace (SMS, hovory, reakce na zprávy). V ŽÁDNÉM PŘÍPADĚ ji nepoužívejte pro reálnou ochranu životních funkcí!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "V běžném režimu jsou intervaly nastaveny na standardní produkční hodnoty: kontrola každou 1 hodinu, eskalace po 15 minutách nečinnosti.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -301,7 +381,9 @@ fun SettingsPreview() {
             escalationContactsManipulator = dummyEscalationManipulator,
             infoContactsManipulator = dummyInfoManipulator,
             userName = "...",
-            onUserNameChange = {}
+            onUserNameChange = {},
+            useTestConfig = false,
+            onUseTestConfigChange = {}
         )
     }
 }

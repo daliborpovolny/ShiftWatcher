@@ -32,6 +32,7 @@ class WatcherServiceTest {
             dao.getAllEscalationContactsSync().forEach {
                 dao.deleteEscalationContact(it)
             }
+            dao.insertUserSetting(UserSetting("use_test_config", "true"))
         }
 
         // Initialize WatcherService using reflection to attach Context and Application

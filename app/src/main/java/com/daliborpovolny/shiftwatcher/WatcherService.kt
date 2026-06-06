@@ -10,7 +10,7 @@ import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 
-const val TEST = true
+// AppConfig holds configuration values for checkups, alerts, and escalations.
 
 // Production values
 //const val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 60 * 1000L
@@ -41,7 +41,8 @@ object TestConfig : AppConfig {
     override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 60_000L
 }
 
-val config = if (TEST) TestConfig else ProdConfig
+val config: AppConfig
+    get() = if (WatcherService.useTestConfig) TestConfig else ProdConfig
 
 
 enum class ShiftState {
@@ -56,6 +57,8 @@ enum class ShiftState {
 class WatcherService : Service() {
 
     companion object {
+        var useTestConfig = false
+
         // Use constants to prevent typos and PendingIntent mismatches
         const val ACTION_START_SHIFT = "START_SHIFT"
         const val ACTION_CHECK_IN_PROMPT = "CHECK_IN_PROMPT"
@@ -99,6 +102,13 @@ class WatcherService : Service() {
         super.onCreate()
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         createNotificationChannels()
+        
+        // Load the config state synchronously
+        val db = (application as ShiftWatcherApp).database
+        runBlocking {
+            useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
+        }
+        Log.d("WatcherService", "onCreate: Loaded useTestConfig=$useTestConfig")
     }
 
     override fun onDestroy() {
@@ -123,6 +133,11 @@ class WatcherService : Service() {
         when (action) {
             ACTION_START_SHIFT -> {
                 if (currentState == ShiftState.INACTIVE) {
+                    val db = (application as ShiftWatcherApp).database
+                    runBlocking {
+                        useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
+                    }
+                    Log.d("WatcherService", "onStartCommand ACTION_START_SHIFT: Loaded useTestConfig=$useTestConfig")
                     sendShiftStartSms()
 
                     if (scheduleNextCheckIn()) {
