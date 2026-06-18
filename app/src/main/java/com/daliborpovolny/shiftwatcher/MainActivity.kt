@@ -8,6 +8,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.app.NotificationManager
+import android.os.PowerManager
+import android.content.Context
 import androidx.activity.*
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -142,8 +145,21 @@ class MainActivity : ComponentActivity() {
         val listener = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
             ?.contains(packageName) == true
 
+        // Check Battery Optimization Exemption
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val battery = powerManager.isIgnoringBatteryOptimizations(packageName)
+
+        // Check Overlay Permission (Draw over other apps)
+        val overlay = Settings.canDrawOverlays(context)
+
+        // Check Full Screen Intent Permission (API 34+)
+        val fullscreen = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.canUseFullScreenIntent()
+        } else true
+
         // Only set to true if EVERY critical permission is ok
-        arePermissionsGranted = sms && call && notify && alarm && listener
+        arePermissionsGranted = sms && call && notify && alarm && listener && battery && overlay && fullscreen
         println("permission state:$arePermissionsGranted")
     }
 
@@ -178,7 +194,35 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
         }
 
-        // 4. Launch the standard popup for SMS/Call/Notifications
+        // 4. Handle "Special" Permission: Battery Optimization (Android 6.0+)
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        }
+
+        // 5. Handle "Special" Permission: Draw over other apps / Overlay
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        }
+
+        // 6. Handle "Special" Permission: Full screen intent (Android 14+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!notificationManager.canUseFullScreenIntent()) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
+
+        // 7. Launch the standard popup for SMS/Call/Notifications
         requestPermissionLauncher.launch(dangerousPermissions.toTypedArray())
     }
 

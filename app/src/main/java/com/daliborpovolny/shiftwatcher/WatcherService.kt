@@ -98,6 +98,38 @@ class WatcherService : Service() {
     private var countDownTimer: CountDownTimer? = null
     private lateinit var alarmManager: AlarmManager
 
+    private fun acquireWakeLock(tagSuffix: String, durationMs: Long) {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "ShiftWatcher:$tagSuffix"
+            ).apply {
+                acquire(durationMs)
+            }
+            Log.d("WatcherService", "WakeLock acquired for $tagSuffix, duration: $durationMs ms")
+        } catch (e: Exception) {
+            Log.e("WatcherService", "Error acquiring WakeLock: ${e.message}", e)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                }
+            }
+            wakeLock = null
+            Log.d("WatcherService", "WakeLock released")
+        } catch (e: Exception) {
+            Log.e("WatcherService", "Error releasing WakeLock: ${e.message}", e)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -114,11 +146,7 @@ class WatcherService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
-        }
+        releaseWakeLock()
         vibrator?.cancel()
         ringtone?.stop()
     }
@@ -255,6 +283,7 @@ class WatcherService : Service() {
     }
 
     private fun triggerLoudAlarm() {
+        acquireWakeLock("AlarmWakeLock", 30 * 60 * 1000L) // 30 minutes safety limit
         // 1. Maximize Volume & Play Sound
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.setStreamVolume(
@@ -333,6 +362,7 @@ class WatcherService : Service() {
     private fun stopAlarmAndReset() {
         ringtone?.stop()
         vibrator?.cancel()
+        releaseWakeLock()
 
         // Remove the loud notification from the screen
         getSystemService(NotificationManager::class.java).cancel(ALARM_NOTIFICATION_ID)
@@ -366,12 +396,7 @@ class WatcherService : Service() {
         // 4. Cleanup media and notifications
         ringtone?.stop()
         vibrator?.cancel()
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
-        }
-        wakeLock = null
+        releaseWakeLock()
 
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -543,13 +568,7 @@ class WatcherService : Service() {
         val contactDao = db.contactDao()
 
         // Acquire WakeLock to keep CPU awake during critical safety escalation
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "ShiftWatcher:EscalationWakeLock"
-        ).apply {
-            acquire(15 * 60 * 1000L) // 15 minutes limit as a safety backup
-        }
+        acquireWakeLock("EscalationWakeLock", 15 * 60 * 1000L)
 
         serviceScope.launch {
             try {
@@ -592,12 +611,7 @@ class WatcherService : Service() {
                 addEscalationLog("Všechny kontakty kontaktovány, žádná odpověd.")
             } finally {
                 // Safely release the wakeLock when the coroutine is cancelled or finishes
-                wakeLock?.let {
-                    if (it.isHeld) {
-                        it.release()
-                    }
-                }
-                wakeLock = null
+                releaseWakeLock()
             }
         }
     }
