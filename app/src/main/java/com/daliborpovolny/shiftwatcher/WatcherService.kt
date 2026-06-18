@@ -134,7 +134,7 @@ class WatcherService : Service() {
         super.onCreate()
         alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         createNotificationChannels()
-        
+
         // Load the config state synchronously
         val db = (application as ShiftWatcherApp).database
         runBlocking {
@@ -165,7 +165,10 @@ class WatcherService : Service() {
                     runBlocking {
                         useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
                     }
-                    Log.d("WatcherService", "onStartCommand ACTION_START_SHIFT: Loaded useTestConfig=$useTestConfig")
+                    Log.d(
+                        "WatcherService",
+                        "onStartCommand ACTION_START_SHIFT: Loaded useTestConfig=$useTestConfig"
+                    )
                     sendShiftStartSms()
 
                     if (scheduleNextCheckIn()) {
@@ -508,42 +511,42 @@ class WatcherService : Service() {
     }
 
     // test escalation policy -> only texts each person in the escalation list
-    private fun executeEscalation() {
-        Log.e("WatcherService", "ESCALATION TRIGGERED. Contacting escalation list.")
-
-        val db = (application as ShiftWatcherApp).database
-        val contactDao = db.contactDao()
-
-        serviceScope.launch {
-            val contacts = contactDao.getAllEscalationContactsSync()
-
-            if (contacts.isEmpty()) {
-                Log.e("WatcherService", "No escalation contacts found!")
-                addEscalationLog("No escalation contacts found!")
-                return@launch
-            }
-
-            val message =
-                "EMERGENCY: \$name has missed a safety check-in on Shift Watcher and is not responding."
-
-            contacts.forEach { contact ->
-                try {
-                    sendSms(contact.number, message)
-                    Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
-                    addEscalationLog("Sms s upozorněním poslána kontaktu ${contact.name}")
-
-                    // Wait 1 second between messages to avoid spam filters
-                    delay(1000)
-                } catch (e: Exception) {
-                    Log.e(
-                        "WatcherService",
-                        "Failed to send Escalation SMS to ${contact.name}: ${e.message}"
-                    )
-                    addEscalationLog("Nepodařilo se poslat sms kontaktu ${contact.name}")
-                }
-            }
-        }
-    }
+//    private fun executeEscalation() {
+//        Log.e("WatcherService", "ESCALATION TRIGGERED. Contacting escalation list.")
+//
+//        val db = (application as ShiftWatcherApp).database
+//        val contactDao = db.contactDao()
+//
+//        serviceScope.launch {
+//            val contacts = contactDao.getAllEscalationContactsSync()
+//
+//            if (contacts.isEmpty()) {
+//                Log.e("WatcherService", "No escalation contacts found!")
+//                addEscalationLog("No escalation contacts found!")
+//                return@launch
+//            }
+//
+//            val message =
+//                "EMERGENCY: \$name has missed a safety check-in on Shift Watcher and is not responding."
+//
+//            contacts.forEach { contact ->
+//                try {
+//                    sendSms(contact.number, message)
+//                    Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
+//                    addEscalationLog("Sms s upozorněním poslána kontaktu ${contact.name}")
+//
+//                    // Wait 1 second between messages to avoid spam filters
+//                    delay(1000)
+//                } catch (e: Exception) {
+//                    Log.e(
+//                        "WatcherService",
+//                        "Failed to send Escalation SMS to ${contact.name}: ${e.message}"
+//                    )
+//                    addEscalationLog("Nepodařilo se poslat sms kontaktu ${contact.name}")
+//                }
+//            }
+//        }
+//    }
 
     private fun makeEmergencyCall(phoneNumber: String) {
         val intent = Intent(Intent.ACTION_CALL).apply {
@@ -583,7 +586,7 @@ class WatcherService : Service() {
                     addEscalationLog("Sms poslána kontaktu ${contact.name}...")
                     sendSms(
                         contact.number,
-                        "POZOR: $name zmeškal/a budík. Odepište 'zastavit eskalaci', 'stop eskalaci' nebo 'stop escalation', aby se eskalace přerušila."
+                        "Hlídač směny - POZOR: $name zmeškal/a budík. Odepište 'zastavit eskalaci', 'stop eskalaci' nebo 'stop escalation', aby se eskalace přerušila."
                     )
                     Log.d("WatcherService", "Escalation SMS sent to ${contact.name}")
 
@@ -630,7 +633,7 @@ class WatcherService : Service() {
 
             val name = contactDao.getUserSetting("user_name") ?: "Zaměstnanec"
             val batteryInfo = getBatteryInfo()
-            val message = "INFO: $name začal/a svou směnu. $batteryInfo"
+            val message = "Hlídač směny - INFO: $name začal/a svou směnu. $batteryInfo"
 
             contacts.forEach { contact ->
                 try {
