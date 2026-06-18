@@ -191,7 +191,7 @@ fun PersonalDetails(
             "Toto jméno bude použito v SMS zprávách zasílaných vašim kontaktům.",
             style = MaterialTheme.typography.bodySmall
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         Spacer(modifier = Modifier.height(16.dp))
@@ -251,14 +251,14 @@ fun PersonalDetails(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "POZOR: Tato konfigurace zkracuje kontrolní intervaly na sekundy (30s kontrola, 15s eskalace) a slouží VÝHRADNĚ k ověření funkčnosti aplikace (SMS, hovory, reakce na zprávy). V ŽÁDNÉM PŘÍPADĚ ji nepoužívejte pro reálnou ochranu životních funkcí!",
+                            text = "POZOR - tohle je testovací konfigurace, kde jsou všechny časy velmi zkrácené",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 } else {
                     Text(
-                        text = "V běžném režimu jsou intervaly nastaveny na standardní produkční hodnoty: kontrola každou 1 hodinu, eskalace po 15 minutách nečinnosti.",
+                        text = "V běžném režimu jsou intervaly nastaveny na: kontrola každou 1 hodinu, eskalace po 15 minutách nečinnosti.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
