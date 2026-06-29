@@ -376,6 +376,7 @@ class WatcherService : Service() {
             escalationTime,
             pendingIntent
         )
+        startVisualTimer((config.ESCALATION_GRACE_PERIOD_MS / 1000).toInt())
 
         // 3. Show Full-Screen UI Notification
         val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
@@ -409,6 +410,7 @@ class WatcherService : Service() {
         ringtone?.stop()
         vibrator?.cancel()
         releaseWakeLock()
+        countDownTimer?.cancel()
 
         // Remove the loud notification from the screen
         getSystemService(NotificationManager::class.java).cancel(ALARM_NOTIFICATION_ID)
