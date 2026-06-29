@@ -18,7 +18,7 @@ class HelperUnitTest {
 
     @Test
     fun screenTypeToCzechName_isCorrect() {
-        assertEquals("Osobní", ScreenTypeToCzechName(ScreenType.Personal))
+        assertEquals("Ostatní", ScreenTypeToCzechName(ScreenType.Other))
         assertEquals("Eskalace", ScreenTypeToCzechName(ScreenType.Escalation))
         assertEquals("Info", ScreenTypeToCzechName(ScreenType.Info))
     }

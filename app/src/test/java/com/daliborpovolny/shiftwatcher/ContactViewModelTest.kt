@@ -114,6 +114,9 @@ class ContactViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.userName.collect {}
         }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.batteryThreshold.collect {}
+        }
         return viewModel
     }
 
@@ -243,5 +246,18 @@ class ContactViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("Dalibor", viewModel.userName.value)
+    }
+
+    @Test
+    fun testUpdateBatteryThreshold() = runTest {
+        val viewModel = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(20, viewModel.batteryThreshold.value)
+
+        viewModel.updateBatteryThreshold(35)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(35, viewModel.batteryThreshold.value)
     }
 }

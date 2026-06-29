@@ -14,14 +14,14 @@ import androidx.compose.ui.unit.dp
 import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
 
 enum class ScreenType {
-    Escalation, Info, Personal
+    Escalation, Info, Other
 }
 
 fun ScreenTypeToCzechName(st: ScreenType): String {
     return when (st) {
         ScreenType.Escalation -> "Eskalace"
         ScreenType.Info -> "Info"
-        ScreenType.Personal -> "Osobní"
+        ScreenType.Other -> "Ostatní"
     }
 }
 
@@ -35,13 +35,15 @@ fun NewSettingsScreen(
     escalationContactsManipulator: EscalationContactManipulator,
     userName: String?,
     onUserNameChange: (String) -> Unit,
+    batteryThreshold: Int,
+    onBatteryThresholdChange: (Int) -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
 ) {
     var newNumber by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
 
-    var selectedType by remember { mutableStateOf(ScreenType.Personal) }
+    var selectedType by remember { mutableStateOf(ScreenType.Other) }
 
     Column(
         modifier = Modifier
@@ -71,10 +73,12 @@ fun NewSettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (selectedType == ScreenType.Personal) {
-            PersonalDetails(
+        if (selectedType == ScreenType.Other) {
+            OtherDetails(
                 userName = userName ?: "",
                 onUserNameChange = onUserNameChange,
+                batteryThreshold = batteryThreshold,
+                onBatteryThresholdChange = onBatteryThresholdChange,
                 useTestConfig = useTestConfig,
                 onUseTestConfigChange = onUseTestConfigChange
             )
@@ -162,13 +166,16 @@ fun NewSettingsScreen(
 }
 
 @Composable
-fun PersonalDetails(
+fun OtherDetails(
     userName: String,
     onUserNameChange: (String) -> Unit,
+    batteryThreshold: Int,
+    onBatteryThresholdChange: (Int) -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
 ) {
     var tempName by remember(userName) { mutableStateOf(userName) }
+    var tempThreshold by remember(batteryThreshold) { mutableFloatStateOf(batteryThreshold.toFloat()) }
 
     Column {
         Text("Osobní údaje", style = MaterialTheme.typography.titleMedium)
@@ -191,6 +198,37 @@ fun PersonalDetails(
             "Toto jméno bude použito v SMS zprávách zasílaných vašim kontaktům.",
             style = MaterialTheme.typography.bodySmall
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- BATTERY THRESHOLD SECTION ---
+        Text("Minimální stav baterie pro spuštění směny", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "Směnu nebude možné začít, pokud je baterie pod tímto prahem a telefon se nenabíjí.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Slider(
+                value = tempThreshold,
+                onValueChange = { tempThreshold = it },
+                onValueChangeFinished = { onBatteryThresholdChange(tempThreshold.toInt()) },
+                valueRange = 0f..60f,
+                steps = 59,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "${tempThreshold.toInt()}%",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -382,6 +420,8 @@ fun SettingsPreview() {
             infoContactsManipulator = dummyInfoManipulator,
             userName = "...",
             onUserNameChange = {},
+            batteryThreshold = 20,
+            onBatteryThresholdChange = {},
             useTestConfig = false,
             onUseTestConfigChange = {}
         )

@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
                 val infoContacts by viewModel.infoContacts.collectAsState()
                 val userName by viewModel.userName.collectAsState()
                 val useTestConfig by viewModel.useTestConfig.collectAsState()
+                val batteryThreshold by viewModel.batteryThreshold.collectAsState()
 
                 val escalationManipulator = object : EscalationContactManipulator {
                     override fun add(name: String, number: String) {
@@ -104,6 +105,8 @@ class MainActivity : ComponentActivity() {
                     infoContactsManipulator = infoManipulator,
                     userName = userName,
                     onUserNameChange = viewModel::updateUserName,
+                    batteryThreshold = batteryThreshold,
+                    onBatteryThresholdChange = viewModel::updateBatteryThreshold,
                     useTestConfig = useTestConfig == "true",
                     onUseTestConfigChange = viewModel::updateUseTestConfig
                 )
@@ -243,6 +246,8 @@ fun StartUp(
     escalationContactsManipulator: EscalationContactManipulator,
     userName: String?,
     onUserNameChange: (String) -> Unit,
+    batteryThreshold: Int,
+    onBatteryThresholdChange: (Int) -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
     ) {
@@ -293,6 +298,8 @@ fun StartUp(
                         infoContactsManipulator = infoContactsManipulator,
                         userName = userName,
                         onUserNameChange = onUserNameChange,
+                        batteryThreshold = batteryThreshold,
+                        onBatteryThresholdChange = onBatteryThresholdChange,
                         useTestConfig = useTestConfig,
                         onUseTestConfigChange = onUseTestConfigChange
                     )
@@ -335,6 +342,8 @@ fun HomePagePreview() {
             onResolvePermissions = {},
             userName = "Dalibor",
             onUserNameChange = {},
+            batteryThreshold = 20,
+            onBatteryThresholdChange = {},
             useTestConfig = false,
             onUseTestConfigChange = {}
         )

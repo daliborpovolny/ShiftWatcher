@@ -2,6 +2,7 @@ package com.daliborpovolny.shiftwatcher
 
 import androidx.lifecycle.*
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -93,6 +94,17 @@ class ContactViewModel(private val dao: ContactDao) : ViewModel() {
     fun updateUseTestConfig(useTest: Boolean) {
         viewModelScope.launch {
             dao.insertUserSetting(UserSetting("use_test_config", useTest.toString()))
+        }
+    }
+
+    val batteryThreshold = dao.getUserSettingFlow("battery_threshold")
+        .map { it?.toIntOrNull() ?: WatcherService.DEFAULT_BATTERY_THRESHOLD }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WatcherService.DEFAULT_BATTERY_THRESHOLD)
+
+    fun updateBatteryThreshold(threshold: Int) {
+        val clamped = threshold.coerceIn(0, 60)
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("battery_threshold", clamped.toString()))
         }
     }
 

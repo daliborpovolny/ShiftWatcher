@@ -41,6 +41,8 @@ class SettingsScreenTest {
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
                     onUserNameChange = {},
+                    batteryThreshold = 20,
+                    onBatteryThresholdChange = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -50,10 +52,11 @@ class SettingsScreenTest {
         // Verify title
         composeTestRule.onNodeWithText("Nastavení").assertIsDisplayed()
 
-        // Verify that default tab is Personal/Osobní
+        // Verify that default tab is Other/Ostatní
         composeTestRule.onNodeWithText("Osobní údaje").assertIsDisplayed()
         composeTestRule.onNodeWithText("Vaše jméno").assertIsDisplayed()
         composeTestRule.onNodeWithText("Uložit jméno").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Minimální stav baterie pro spuštění směny").assertIsDisplayed()
         
         // Check that contacts are NOT shown in personal tab
         composeTestRule.onNodeWithText("John Lennon").assertDoesNotExist()
@@ -75,6 +78,8 @@ class SettingsScreenTest {
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
                     onUserNameChange = {},
+                    batteryThreshold = 20,
+                    onBatteryThresholdChange = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -113,6 +118,8 @@ class SettingsScreenTest {
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
                     onUserNameChange = {},
+                    batteryThreshold = 20,
+                    onBatteryThresholdChange = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -135,6 +142,8 @@ class SettingsScreenTest {
                     infoContactsManipulator = dummyInfoManipulator,
                     userName = "Dalibor",
                     onUserNameChange = {},
+                    batteryThreshold = 20,
+                    onBatteryThresholdChange = {},
                     useTestConfig = true,
                     onUseTestConfigChange = {}
                 )

@@ -6,6 +6,7 @@ import android.media.*
 import android.os.*
 import android.telephony.SmsManager
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
@@ -58,6 +59,7 @@ class WatcherService : Service() {
 
     companion object {
         var useTestConfig = false
+        const val DEFAULT_BATTERY_THRESHOLD = 20
 
         // Use constants to prevent typos and PendingIntent mismatches
         const val ACTION_START_SHIFT = "START_SHIFT"
@@ -162,13 +164,33 @@ class WatcherService : Service() {
             ACTION_START_SHIFT -> {
                 if (currentState == ShiftState.INACTIVE) {
                     val db = (application as ShiftWatcherApp).database
+                    var batteryThreshold = DEFAULT_BATTERY_THRESHOLD
                     runBlocking {
                         useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
+                        val thresholdStr = db.contactDao().getUserSetting("battery_threshold")
+                        batteryThreshold = thresholdStr?.toIntOrNull() ?: DEFAULT_BATTERY_THRESHOLD
                     }
                     Log.d(
                         "WatcherService",
-                        "onStartCommand ACTION_START_SHIFT: Loaded useTestConfig=$useTestConfig"
+                        "onStartCommand ACTION_START_SHIFT: Loaded useTestConfig=$useTestConfig, batteryThreshold=$batteryThreshold"
                     )
+
+                    val (pct, isCharging) = getBatteryState()
+                    if (pct in 0 until batteryThreshold && !isCharging) {
+                        Log.w(
+                            "WatcherService",
+                            "Cannot start shift: Battery level ($pct%) is below threshold ($batteryThreshold%) and phone is not charging."
+                        )
+                        Toast.makeText(
+                            this,
+                            "Směnu nelze začít: Baterie je pod limitním prahem $batteryThreshold% ($pct%) a telefon se nenabíjí.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
+
                     sendShiftStartSms()
 
                     if (scheduleNextCheckIn()) {
@@ -432,6 +454,19 @@ class WatcherService : Service() {
         }.start()
     }
 
+    private fun getBatteryState(): Pair<Int, Boolean> {
+        val batteryStatus: Intent? =
+            registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val pct = if (level >= 0 && scale > 0) (level * 100 / scale.toFloat()).toInt() else -1
+
+        val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val isCharging =
+            status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        return Pair(pct, isCharging)
+    }
+
     private fun getBatteryInfo(): String {
         val batteryStatus: Intent? =
             registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -631,8 +666,13 @@ class WatcherService : Service() {
                 return@launch
             }
 
+            val thresholdStr = contactDao.getUserSetting("battery_threshold")
+            val batteryThreshold = thresholdStr?.toIntOrNull() ?: DEFAULT_BATTERY_THRESHOLD
             val name = contactDao.getUserSetting("user_name") ?: "Zaměstnanec"
-            val batteryInfo = getBatteryInfo()
+            var batteryInfo = getBatteryInfo()
+            if (batteryThreshold != DEFAULT_BATTERY_THRESHOLD) {
+                batteryInfo += " (limit baterie pro spuštění: $batteryThreshold%)"
+            }
             val message = "Hlídač směny - INFO: $name začal/a svou směnu. $batteryInfo"
 
             contacts.forEach { contact ->
