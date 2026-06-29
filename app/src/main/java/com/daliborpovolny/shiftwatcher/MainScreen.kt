@@ -79,7 +79,7 @@ fun MainScreen(
                     shape = androidx.compose.ui.graphics.RectangleShape
                 ) {
                     Text(
-                        "Jsem v pořádku",
+                        "Klikni na mě!",
                         style = MaterialTheme.typography.displayLarge,
                         textAlign = TextAlign.Center
                     )
