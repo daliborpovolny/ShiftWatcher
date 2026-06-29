@@ -1,11 +1,12 @@
 package com.daliborpovolny.shiftwatcher
 
-import android.content.Intent
+import android.content.*
+import android.os.BatteryManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,11 +23,42 @@ fun formatTime(seconds: Int): String {
 }
 
 @Composable
+fun rememberBatteryState(): Pair<Int, Boolean> {
+    val context = LocalContext.current
+    var batteryState by remember { mutableStateOf(Pair(-1, false)) }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                val pct =
+                    if (level >= 0 && scale > 0) (level * 100 / scale.toFloat()).toInt() else -1
+                val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+                val isCharging =
+                    status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+                batteryState = Pair(pct, isCharging)
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        context.registerReceiver(receiver, filter)
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+    return batteryState
+}
+
+@Composable
 fun MainScreen(
     shiftState: ShiftState = ShiftState.INACTIVE,
-    remainingTime: String = "59:59"
+    remainingTime: String = "59:59",
+    batteryThreshold: Int = 20
 ) {
     val context = LocalContext.current
+    val (batteryPct, isCharging) = rememberBatteryState()
+    val canStartShift =
+        if (batteryPct == -1) true else !(batteryPct < batteryThreshold && !isCharging)
 
     Column(
         modifier = Modifier
@@ -42,9 +74,21 @@ fun MainScreen(
                         val intent = Intent(context, WatcherService::class.java)
                         context.startForegroundService(intent)
                     },
+                    enabled = canStartShift,
                     modifier = Modifier.size(200.dp)
                 ) {
                     Text("Začít směnu")
+                }
+
+                if (!canStartShift) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Směnu nelze začít: Baterie je pod $batteryThreshold% ($batteryPct%) a telefon se nenabíjí.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
                 }
             }
 

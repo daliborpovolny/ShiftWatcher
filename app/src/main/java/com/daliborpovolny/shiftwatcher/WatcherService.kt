@@ -204,7 +204,7 @@ class WatcherService : Service() {
                         )
                         Toast.makeText(
                             this,
-                            "Směnu nelze začít: Baterie je pod limitním prahem $batteryThreshold% ($pct%) a telefon se nenabíjí.",
+                            "Směnu nelze začít: Nízká baterie ($pct%).",
                             Toast.LENGTH_LONG
                         ).show()
                         stopForeground(STOP_FOREGROUND_REMOVE)

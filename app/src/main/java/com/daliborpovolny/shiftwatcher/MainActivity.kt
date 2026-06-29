@@ -305,7 +305,8 @@ fun StartUp(
                 when (selectedTab) {
                     0 -> MainScreen(
                         shiftState = WatcherService.currentState,
-                        remainingTime = formatTime(WatcherService.remainingSeconds)
+                        remainingTime = formatTime(WatcherService.remainingSeconds),
+                        batteryThreshold = batteryThreshold
                     )
 
                     1 -> NewSettingsScreen(
