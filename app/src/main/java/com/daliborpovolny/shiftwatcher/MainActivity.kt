@@ -68,6 +68,9 @@ class MainActivity : ComponentActivity() {
                 val userName by viewModel.userName.collectAsState()
                 val useTestConfig by viewModel.useTestConfig.collectAsState()
                 val batteryThreshold by viewModel.batteryThreshold.collectAsState()
+                val primaryCheckupInterval by viewModel.primaryCheckupInterval.collectAsState()
+                val escalationGracePeriod by viewModel.escalationGracePeriod.collectAsState()
+                val contactAnswerWaitTime by viewModel.contactAnswerWaitTime.collectAsState()
 
                 val escalationManipulator = object : EscalationContactManipulator {
                     override fun add(name: String, number: String) {
@@ -107,6 +110,13 @@ class MainActivity : ComponentActivity() {
                     onUserNameChange = viewModel::updateUserName,
                     batteryThreshold = batteryThreshold,
                     onBatteryThresholdChange = viewModel::updateBatteryThreshold,
+                    primaryCheckupInterval = primaryCheckupInterval,
+                    onPrimaryCheckupIntervalChange = viewModel::updatePrimaryCheckupInterval,
+                    escalationGracePeriod = escalationGracePeriod,
+                    onEscalationGracePeriodChange = viewModel::updateEscalationGracePeriod,
+                    contactAnswerWaitTime = contactAnswerWaitTime,
+                    onContactAnswerWaitTimeChange = viewModel::updateContactAnswerWaitTime,
+                    onResetTimeIntervalsToDefault = viewModel::resetTimeIntervalsToDefault,
                     useTestConfig = useTestConfig == "true",
                     onUseTestConfigChange = viewModel::updateUseTestConfig
                 )
@@ -248,6 +258,13 @@ fun StartUp(
     onUserNameChange: (String) -> Unit,
     batteryThreshold: Int,
     onBatteryThresholdChange: (Int) -> Unit,
+    primaryCheckupInterval: Int,
+    onPrimaryCheckupIntervalChange: (Int) -> Unit,
+    escalationGracePeriod: Int,
+    onEscalationGracePeriodChange: (Int) -> Unit,
+    contactAnswerWaitTime: Int,
+    onContactAnswerWaitTimeChange: (Int) -> Unit,
+    onResetTimeIntervalsToDefault: () -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
     ) {
@@ -300,6 +317,13 @@ fun StartUp(
                         onUserNameChange = onUserNameChange,
                         batteryThreshold = batteryThreshold,
                         onBatteryThresholdChange = onBatteryThresholdChange,
+                        primaryCheckupInterval = primaryCheckupInterval,
+                        onPrimaryCheckupIntervalChange = onPrimaryCheckupIntervalChange,
+                        escalationGracePeriod = escalationGracePeriod,
+                        onEscalationGracePeriodChange = onEscalationGracePeriodChange,
+                        contactAnswerWaitTime = contactAnswerWaitTime,
+                        onContactAnswerWaitTimeChange = onContactAnswerWaitTimeChange,
+                        onResetTimeIntervalsToDefault = onResetTimeIntervalsToDefault,
                         useTestConfig = useTestConfig,
                         onUseTestConfigChange = onUseTestConfigChange
                     )
@@ -344,6 +368,13 @@ fun HomePagePreview() {
             onUserNameChange = {},
             batteryThreshold = 20,
             onBatteryThresholdChange = {},
+            primaryCheckupInterval = 60,
+            onPrimaryCheckupIntervalChange = {},
+            escalationGracePeriod = 15,
+            onEscalationGracePeriodChange = {},
+            contactAnswerWaitTime = 3,
+            onContactAnswerWaitTimeChange = {},
+            onResetTimeIntervalsToDefault = {},
             useTestConfig = false,
             onUseTestConfigChange = {}
         )

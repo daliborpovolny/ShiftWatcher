@@ -3,12 +3,16 @@ package com.daliborpovolny.shiftwatcher
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
@@ -37,6 +41,13 @@ fun NewSettingsScreen(
     onUserNameChange: (String) -> Unit,
     batteryThreshold: Int,
     onBatteryThresholdChange: (Int) -> Unit,
+    primaryCheckupInterval: Int,
+    onPrimaryCheckupIntervalChange: (Int) -> Unit,
+    escalationGracePeriod: Int,
+    onEscalationGracePeriodChange: (Int) -> Unit,
+    contactAnswerWaitTime: Int,
+    onContactAnswerWaitTimeChange: (Int) -> Unit,
+    onResetTimeIntervalsToDefault: () -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
 ) {
@@ -79,64 +90,77 @@ fun NewSettingsScreen(
                 onUserNameChange = onUserNameChange,
                 batteryThreshold = batteryThreshold,
                 onBatteryThresholdChange = onBatteryThresholdChange,
+                primaryCheckupInterval = primaryCheckupInterval,
+                onPrimaryCheckupIntervalChange = onPrimaryCheckupIntervalChange,
+                escalationGracePeriod = escalationGracePeriod,
+                onEscalationGracePeriodChange = onEscalationGracePeriodChange,
+                contactAnswerWaitTime = contactAnswerWaitTime,
+                onContactAnswerWaitTimeChange = onContactAnswerWaitTimeChange,
+                onResetTimeIntervalsToDefault = onResetTimeIntervalsToDefault,
                 useTestConfig = useTestConfig,
                 onUseTestConfigChange = onUseTestConfigChange
             )
             return
         }
 
-        Text(
-            text = "Přidat do ${ScreenTypeToCzechName(selectedType)} seznamu",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        val escalationInfo =
-            "Seznam kontaktů, které budou postupně od vrchu kontaktovány, pokud nebude kontrolní budík odkliknut"
-        val infoInfo = "Seznam kontaktů, které budou pomocí SMS informovány o začátku a konci směny"
-
-        Text(
-            text = if (selectedType == ScreenType.Escalation) escalationInfo else infoInfo,
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        OutlinedTextField(
-            value = newName,
-            onValueChange = { newName = it },
-            label = { Text("Jméno") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = newNumber,
-            onValueChange = { newNumber = it },
-            label = { Text("Telefoní číslo ve formátu: +420777888999") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = {
-                if (newNumber.isNotBlank() && newName.isNotBlank()) {
-                    if (selectedType == ScreenType.Escalation) {
-                        escalationContactsManipulator.add(newName, newNumber)
-                    } else {
-                        infoContactsManipulator.add(newName, newNumber)
-                    }
-                    newNumber = ""
-                    newName = ""
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Text("Přidat do ${ScreenTypeToCzechName(selectedType)}")
-        }
+            item {
+                Text(
+                    text = "Přidat do ${ScreenTypeToCzechName(selectedType)} seznamu",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+                val escalationInfo =
+                    "Seznam kontaktů, které budou postupně od vrchu kontaktovány, pokud nebude kontrolní budík odkliknut"
+                val infoInfo = "Seznam kontaktů, které budou pomocí SMS informovány o začátku a konci směny"
 
-        if (selectedType == ScreenType.Escalation) {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (selectedType == ScreenType.Escalation) escalationInfo else infoInfo,
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Jméno") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = newNumber,
+                    onValueChange = { newNumber = it },
+                    label = { Text("Telefoní číslo ve formátu: +420777888999") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (newNumber.isNotBlank() && newName.isNotBlank()) {
+                            if (selectedType == ScreenType.Escalation) {
+                                escalationContactsManipulator.add(newName, newNumber)
+                            } else {
+                                infoContactsManipulator.add(newName, newNumber)
+                            }
+                            newNumber = ""
+                            newName = ""
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Text("Přidat do ${ScreenTypeToCzechName(selectedType)}")
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            if (selectedType == ScreenType.Escalation) {
                 itemsIndexed(
                     escalationContacts,
                     key = { _, contact -> contact.id }) { index, contact ->
@@ -149,9 +173,7 @@ fun NewSettingsScreen(
                         onMoveDown = { escalationContactsManipulator.moveDown(index) }
                     )
                 }
-            }
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            } else {
                 itemsIndexed(infoContacts, key = { _, contact -> contact.id }) { _, contact ->
                     InfoContactRow(
                         contact = contact,
@@ -171,13 +193,24 @@ fun OtherDetails(
     onUserNameChange: (String) -> Unit,
     batteryThreshold: Int,
     onBatteryThresholdChange: (Int) -> Unit,
+    primaryCheckupInterval: Int,
+    onPrimaryCheckupIntervalChange: (Int) -> Unit,
+    escalationGracePeriod: Int,
+    onEscalationGracePeriodChange: (Int) -> Unit,
+    contactAnswerWaitTime: Int,
+    onContactAnswerWaitTimeChange: (Int) -> Unit,
+    onResetTimeIntervalsToDefault: () -> Unit,
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
 ) {
     var tempName by remember(userName) { mutableStateOf(userName) }
     var tempThreshold by remember(batteryThreshold) { mutableFloatStateOf(batteryThreshold.toFloat()) }
 
-    Column {
+    var primaryStr by remember(primaryCheckupInterval) { mutableStateOf(primaryCheckupInterval.toString()) }
+    var graceStr by remember(escalationGracePeriod) { mutableStateOf(escalationGracePeriod.toString()) }
+    var waitStr by remember(contactAnswerWaitTime) { mutableStateOf(contactAnswerWaitTime.toString()) }
+
+    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
         Text("Osobní údaje", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
@@ -228,6 +261,91 @@ fun OtherDetails(
                 text = "${tempThreshold.toInt()}%",
                 style = MaterialTheme.typography.titleMedium
             )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                onBatteryThresholdChange(WatcherService.DEFAULT_BATTERY_THRESHOLD)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Obnovit výchozí limit (20 %)")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- TIME INTERVALS CONFIGURATION SECTION ---
+        Text("Časové intervaly", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "Tato nastavení se uplatní v běžném provozu (nikoliv při testovací konfiguraci).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = primaryStr,
+            onValueChange = { newValue ->
+                primaryStr = newValue
+                newValue.toIntOrNull()?.let { onPrimaryCheckupIntervalChange(it) }
+            },
+            label = { Text("Doba mezi jednotlivými budíky") },
+            suffix = { Text("min") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = "Doba, mezi jednotlivými budíky",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+        )
+
+        OutlinedTextField(
+            value = graceStr,
+            onValueChange = { newValue ->
+                graceStr = newValue
+                newValue.toIntOrNull()?.let { onEscalationGracePeriodChange(it) }
+            },
+            label = { Text("Čekání před eskalací") },
+            suffix = { Text("min") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = "Doba, po jakou se bude čekat, jestli bude budík odkliknut, než se začnou kontaktovat kontakty",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+        )
+
+        OutlinedTextField(
+            value = waitStr,
+            onValueChange = { newValue ->
+                waitStr = newValue
+                newValue.toIntOrNull()?.let { onContactAnswerWaitTimeChange(it) }
+            },
+            label = { Text("Čekání na odpověď kontaktu") },
+            suffix = { Text("min") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = "Doba, po kterou se bude čekat na odpověď od jednoho kontaktu, než se přesune na další (doporučeno aspon 3 minuty, aby hovor stihl projít)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { onResetTimeIntervalsToDefault() },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Obnovit výchozí intervaly")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -422,6 +540,13 @@ fun SettingsPreview() {
             onUserNameChange = {},
             batteryThreshold = 20,
             onBatteryThresholdChange = {},
+            primaryCheckupInterval = 60,
+            onPrimaryCheckupIntervalChange = {},
+            escalationGracePeriod = 15,
+            onEscalationGracePeriodChange = {},
+            contactAnswerWaitTime = 3,
+            onContactAnswerWaitTimeChange = {},
+            onResetTimeIntervalsToDefault = {},
             useTestConfig = false,
             onUseTestConfigChange = {}
         )

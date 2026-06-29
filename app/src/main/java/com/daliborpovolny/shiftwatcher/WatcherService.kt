@@ -30,10 +30,12 @@ interface AppConfig {
 }
 
 object ProdConfig : AppConfig {
-    override val PRIMARY_CHECKUP_INTERVAL_MS = 60 * 60 * 1000L
-    override val ESCALATION_GRACE_PERIOD_MS = 15 * 60 * 1000L
-    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS = 3 * 60 * 1000L
-
+    override val PRIMARY_CHECKUP_INTERVAL_MS: Long
+        get() = WatcherService.customPrimaryCheckupIntervalMin * 60 * 1000L
+    override val ESCALATION_GRACE_PERIOD_MS: Long
+        get() = WatcherService.customEscalationGracePeriodMin * 60 * 1000L
+    override val ESCALATION_CONTACT_ANSWER_WAIT_TIME_MS: Long
+        get() = WatcherService.customContactAnswerWaitTimeMin * 60 * 1000L
 }
 
 object TestConfig : AppConfig {
@@ -60,6 +62,13 @@ class WatcherService : Service() {
     companion object {
         var useTestConfig = false
         const val DEFAULT_BATTERY_THRESHOLD = 20
+        const val DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN = 60
+        const val DEFAULT_ESCALATION_GRACE_PERIOD_MIN = 15
+        const val DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN = 3
+
+        var customPrimaryCheckupIntervalMin = DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN
+        var customEscalationGracePeriodMin = DEFAULT_ESCALATION_GRACE_PERIOD_MIN
+        var customContactAnswerWaitTimeMin = DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN
 
         // Use constants to prevent typos and PendingIntent mismatches
         const val ACTION_START_SHIFT = "START_SHIFT"
@@ -141,6 +150,12 @@ class WatcherService : Service() {
         val db = (application as ShiftWatcherApp).database
         runBlocking {
             useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
+            customPrimaryCheckupIntervalMin = db.contactDao().getUserSetting("primary_checkup_interval")?.toIntOrNull()
+                ?: DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN
+            customEscalationGracePeriodMin = db.contactDao().getUserSetting("escalation_grace_period")?.toIntOrNull()
+                ?: DEFAULT_ESCALATION_GRACE_PERIOD_MIN
+            customContactAnswerWaitTimeMin = db.contactDao().getUserSetting("contact_answer_wait_time")?.toIntOrNull()
+                ?: DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN
         }
         Log.d("WatcherService", "onCreate: Loaded useTestConfig=$useTestConfig")
     }
@@ -169,6 +184,12 @@ class WatcherService : Service() {
                         useTestConfig = db.contactDao().getUserSetting("use_test_config") == "true"
                         val thresholdStr = db.contactDao().getUserSetting("battery_threshold")
                         batteryThreshold = thresholdStr?.toIntOrNull() ?: DEFAULT_BATTERY_THRESHOLD
+                        customPrimaryCheckupIntervalMin = db.contactDao().getUserSetting("primary_checkup_interval")?.toIntOrNull()
+                            ?: DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN
+                        customEscalationGracePeriodMin = db.contactDao().getUserSetting("escalation_grace_period")?.toIntOrNull()
+                            ?: DEFAULT_ESCALATION_GRACE_PERIOD_MIN
+                        customContactAnswerWaitTimeMin = db.contactDao().getUserSetting("contact_answer_wait_time")?.toIntOrNull()
+                            ?: DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN
                     }
                     Log.d(
                         "WatcherService",

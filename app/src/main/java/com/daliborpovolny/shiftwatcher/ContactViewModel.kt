@@ -108,6 +108,47 @@ class ContactViewModel(private val dao: ContactDao) : ViewModel() {
         }
     }
 
+    val primaryCheckupInterval = dao.getUserSettingFlow("primary_checkup_interval")
+        .map { it?.toIntOrNull() ?: WatcherService.DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WatcherService.DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN)
+
+    fun updatePrimaryCheckupInterval(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("primary_checkup_interval", clamped.toString()))
+        }
+    }
+
+    val escalationGracePeriod = dao.getUserSettingFlow("escalation_grace_period")
+        .map { it?.toIntOrNull() ?: WatcherService.DEFAULT_ESCALATION_GRACE_PERIOD_MIN }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WatcherService.DEFAULT_ESCALATION_GRACE_PERIOD_MIN)
+
+    fun updateEscalationGracePeriod(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("escalation_grace_period", clamped.toString()))
+        }
+    }
+
+    val contactAnswerWaitTime = dao.getUserSettingFlow("contact_answer_wait_time")
+        .map { it?.toIntOrNull() ?: WatcherService.DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), WatcherService.DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN)
+
+    fun updateContactAnswerWaitTime(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("contact_answer_wait_time", clamped.toString()))
+        }
+    }
+
+    fun resetTimeIntervalsToDefault() {
+        viewModelScope.launch {
+            dao.insertUserSetting(UserSetting("primary_checkup_interval", WatcherService.DEFAULT_PRIMARY_CHECKUP_INTERVAL_MIN.toString()))
+            dao.insertUserSetting(UserSetting("escalation_grace_period", WatcherService.DEFAULT_ESCALATION_GRACE_PERIOD_MIN.toString()))
+            dao.insertUserSetting(UserSetting("contact_answer_wait_time", WatcherService.DEFAULT_ESCALATION_CONTACT_ANSWER_WAIT_TIME_MIN.toString()))
+        }
+    }
+
 
     // Factory to help Android create the ViewModel with the DAO
     class Factory(private val dao: ContactDao) : ViewModelProvider.Factory {

@@ -43,6 +43,13 @@ class SettingsScreenTest {
                     onUserNameChange = {},
                     batteryThreshold = 20,
                     onBatteryThresholdChange = {},
+                    primaryCheckupInterval = 60,
+                    onPrimaryCheckupIntervalChange = {},
+                    escalationGracePeriod = 15,
+                    onEscalationGracePeriodChange = {},
+                    contactAnswerWaitTime = 3,
+                    onContactAnswerWaitTimeChange = {},
+                    onResetTimeIntervalsToDefault = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -80,6 +87,13 @@ class SettingsScreenTest {
                     onUserNameChange = {},
                     batteryThreshold = 20,
                     onBatteryThresholdChange = {},
+                    primaryCheckupInterval = 60,
+                    onPrimaryCheckupIntervalChange = {},
+                    escalationGracePeriod = 15,
+                    onEscalationGracePeriodChange = {},
+                    contactAnswerWaitTime = 3,
+                    onContactAnswerWaitTimeChange = {},
+                    onResetTimeIntervalsToDefault = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -120,6 +134,13 @@ class SettingsScreenTest {
                     onUserNameChange = {},
                     batteryThreshold = 20,
                     onBatteryThresholdChange = {},
+                    primaryCheckupInterval = 60,
+                    onPrimaryCheckupIntervalChange = {},
+                    escalationGracePeriod = 15,
+                    onEscalationGracePeriodChange = {},
+                    contactAnswerWaitTime = 3,
+                    onContactAnswerWaitTimeChange = {},
+                    onResetTimeIntervalsToDefault = {},
                     useTestConfig = false,
                     onUseTestConfigChange = {}
                 )
@@ -144,6 +165,13 @@ class SettingsScreenTest {
                     onUserNameChange = {},
                     batteryThreshold = 20,
                     onBatteryThresholdChange = {},
+                    primaryCheckupInterval = 60,
+                    onPrimaryCheckupIntervalChange = {},
+                    escalationGracePeriod = 15,
+                    onEscalationGracePeriodChange = {},
+                    contactAnswerWaitTime = 3,
+                    onContactAnswerWaitTimeChange = {},
+                    onResetTimeIntervalsToDefault = {},
                     useTestConfig = true,
                     onUseTestConfigChange = {}
                 )

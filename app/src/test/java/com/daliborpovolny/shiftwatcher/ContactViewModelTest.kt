@@ -117,6 +117,15 @@ class ContactViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.batteryThreshold.collect {}
         }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.primaryCheckupInterval.collect {}
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.escalationGracePeriod.collect {}
+        }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.contactAnswerWaitTime.collect {}
+        }
         return viewModel
     }
 
@@ -259,5 +268,31 @@ class ContactViewModelTest {
         mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(35, viewModel.batteryThreshold.value)
+    }
+
+    @Test
+    fun testUpdateAndTimeIntervalsReset() = runTest {
+        val viewModel = createViewModel()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(60, viewModel.primaryCheckupInterval.value)
+        assertEquals(15, viewModel.escalationGracePeriod.value)
+        assertEquals(3, viewModel.contactAnswerWaitTime.value)
+
+        viewModel.updatePrimaryCheckupInterval(45)
+        viewModel.updateEscalationGracePeriod(10)
+        viewModel.updateContactAnswerWaitTime(5)
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(45, viewModel.primaryCheckupInterval.value)
+        assertEquals(10, viewModel.escalationGracePeriod.value)
+        assertEquals(5, viewModel.contactAnswerWaitTime.value)
+
+        viewModel.resetTimeIntervalsToDefault()
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(60, viewModel.primaryCheckupInterval.value)
+        assertEquals(15, viewModel.escalationGracePeriod.value)
+        assertEquals(3, viewModel.contactAnswerWaitTime.value)
     }
 }
