@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Service Account credentials
+credentials.json
+client_secrets.json
+token.json
+
+# Python virtual environments & caches
+venv/
+.venv/
+__pycache__/
+*.pyc

@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -23,6 +24,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.daliborpovolny.shiftwatcher.ui.theme.ShiftWatcherTheme
 
 class MainActivity : ComponentActivity() {
@@ -268,6 +278,22 @@ fun StartUp(
     useTestConfig: Boolean,
     onUseTestConfigChange: (Boolean) -> Unit
     ) {
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        checkForUpdate(context) { info ->
+            updateInfo = info
+        }
+    }
+
+    if (updateInfo != null) {
+        UpdateDialog(
+            updateInfo = updateInfo!!,
+            onDismiss = { updateInfo = null }
+        )
+    }
+
     // This state tracks which tab is selected
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -380,4 +406,116 @@ fun HomePagePreview() {
             onUseTestConfigChange = {}
         )
     }
+}
+
+data class UpdateInfo(
+    val versionCode: Int,
+    val versionName: String,
+    val downloadUrl: String,
+    val changelog: String
+)
+
+const val UPDATE_INFO_URL = "https://docs.google.com/uc?export=download&id=1qVaE_PmRQKmprhGxoFM3bfnJAfJ9SWL-"
+
+private fun checkForUpdate(
+    context: Context,
+    onUpdateAvailable: (UpdateInfo) -> Unit
+) {
+    Log.d("UpdateCheck", "Starting update check from: $UPDATE_INFO_URL")
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val url = URL(UPDATE_INFO_URL)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.instanceFollowRedirects = true
+            
+            val responseCode = connection.responseCode
+            Log.d("UpdateCheck", "HTTP Response Code: $responseCode")
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                Log.d("UpdateCheck", "Raw response from server: $response")
+                
+                val json = JSONObject(response)
+                val serverVersionCode = json.getInt("versionCode")
+                val serverVersionName = json.getString("versionName")
+                val downloadUrl = json.getString("downloadUrl")
+                val changelog = json.optString("changelog", "")
+                
+                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    packageInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageInfo.versionCode.toLong()
+                }
+                
+                Log.d("UpdateCheck", "Parsed Server Version Code: $serverVersionCode (Name: $serverVersionName)")
+                Log.d("UpdateCheck", "Local App Version Code: $currentVersionCode (Name: ${packageInfo.versionName})")
+                
+                if (serverVersionCode > currentVersionCode) {
+                    Log.d("UpdateCheck", "New version available! Prompting user to update.")
+                    withContext(Dispatchers.Main) {
+                        onUpdateAvailable(
+                            UpdateInfo(
+                                versionCode = serverVersionCode,
+                                versionName = serverVersionName,
+                                downloadUrl = downloadUrl,
+                                changelog = changelog
+                            )
+                        )
+                    }
+                } else {
+                    Log.d("UpdateCheck", "App is up to date.")
+                }
+            } else {
+                Log.e("UpdateCheck", "Failed to check update. Connection response not OK ($responseCode)")
+            }
+        } catch (e: Exception) {
+            Log.e("UpdateCheck", "Exception occurred during update check: ${e.message}", e)
+        }
+    }
+}
+
+@Composable
+fun UpdateDialog(
+    updateInfo: UpdateInfo,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dostupná nová verze") },
+        text = {
+            Column {
+                Text("Byla nalezena nová verze aplikace (${updateInfo.versionName}).")
+                if (updateInfo.changelog.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Co je nového:\n${updateInfo.changelog}")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text("Stáhnout")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrušit")
+            }
+        }
+    )
 }
