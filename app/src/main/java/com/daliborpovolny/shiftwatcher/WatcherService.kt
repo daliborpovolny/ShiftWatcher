@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
 
+
 // AppConfig holds configuration values for checkups, alerts, and escalations.
 
 // Production values
@@ -101,6 +102,7 @@ class WatcherService : Service() {
             return clean
         }
     }
+
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var wakeLock: PowerManager.WakeLock? = null

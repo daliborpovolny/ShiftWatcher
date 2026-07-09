@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Hlídač směny</string>
+    <string name="attribution_alarm_escalation_label">Služba pro hlídání směny a spouštění poplachů</string>
+    <string name="empty" translatable="false"></string>
 </resources>

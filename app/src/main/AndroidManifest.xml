@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <attribution
+        android:tag="@string/empty"
+        android:label="@string/attribution_alarm_escalation_label" />
+
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
