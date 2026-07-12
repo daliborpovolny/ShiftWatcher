@@ -24,3 +24,7 @@ venv/
 .venv/
 __pycache__/
 *.pyc
+
+# Keystore & properties
+keystore.properties
+

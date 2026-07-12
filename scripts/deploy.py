@@ -11,12 +11,14 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # ==================== CONFIGURATION ====================
-# Replace with your Google Drive Folder ID
+# Google Drive Folder ID
 FOLDER_ID = "18Gp1loKZBKLaJfKXKrjFqYQkW7wpsKTk"
 
-# Set to "assembleRelease" if you want to deploy release builds
-BUILD_TASK = "assembleDebug"
-APK_PATH = "app/build/outputs/apk/debug/app-debug.apk"
+# Set to "assembleRelease" if you want to deploy release builds or "assembleDebug"
+BUILD_TASK = "assembleRelease"
+APK_PATH = "app/build/outputs/apk/release/app-release.apk"
+# BUILD_TASK = "assembleDebug"
+# APK_PATH = "app/build/outputs/apk/debug/app-debug.apk"
 # =======================================================
 
 CREDS_FILE = 'credentials.json'
@@ -55,6 +57,50 @@ def build_apk():
         print(result.stderr.decode())
         sys.exit(1)
     print("Build successful!")
+
+def find_apksigner():
+    sdk_dir = None
+    if os.path.exists("local.properties"):
+        with open("local.properties", "r") as f:
+            for line in f:
+                if line.startswith("sdk.dir"):
+                    sdk_dir = line.split("=")[1].strip()
+                    break
+    if not sdk_dir:
+        sdk_dir = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+        
+    if not sdk_dir or not os.path.exists(sdk_dir):
+        return None
+        
+    build_tools_dir = os.path.join(sdk_dir, "build-tools")
+    if os.path.exists(build_tools_dir):
+        versions = sorted(os.listdir(build_tools_dir))
+        for v in reversed(versions):
+            apksigner_path = os.path.join(build_tools_dir, v, "apksigner")
+            if os.name == 'nt':
+                apksigner_path += ".bat"
+            if os.path.exists(apksigner_path):
+                return apksigner_path
+    return None
+
+def verify_apk_signature(apk_path):
+    apksigner = find_apksigner()
+    if not apksigner:
+        print("Warning: Could not locate 'apksigner' tool in Android SDK. Skipping signature verification.")
+        return True
+        
+    print(f"Verifying APK signature using {apksigner}...")
+    result = subprocess.run([apksigner, "verify", "--verbose", apk_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        print("Signature verification failed! The APK is not signed or the signature is invalid.")
+        if result.stderr:
+            print(result.stderr.decode())
+        if result.stdout:
+            print(result.stdout.decode())
+        return False
+    
+    print("APK signature verification successful!")
+    return True
 
 def get_drive_service():
     creds = None
@@ -118,16 +164,29 @@ def main():
     # 1. Build the APK
     build_apk()
 
-    if not os.path.exists(APK_PATH):
-        print(f"Error: Build completed but APK not found at {APK_PATH}")
-        sys.exit(1)
+    actual_apk_path = APK_PATH
+    if not os.path.exists(actual_apk_path):
+        # Fallback to check for unsigned if that's what was built
+        unsigned_path = APK_PATH.replace(".apk", "-unsigned.apk")
+        if os.path.exists(unsigned_path):
+            actual_apk_path = unsigned_path
+        else:
+            print(f"Error: Build completed but APK not found at {APK_PATH} or {unsigned_path}")
+            sys.exit(1)
+
+    # Verify signature if it's a release build
+    if BUILD_TASK == "assembleRelease":
+        if not verify_apk_signature(actual_apk_path):
+            print("\nError: The built APK is not signed. Please make sure to configure keystore.properties")
+            print("with correct credentials for AndroidStudioKey.jks and try again.")
+            sys.exit(1)
 
     # 2. Get Drive client
     service = get_drive_service()
 
     # 3. Upload APK
     print("Uploading APK to Google Drive...")
-    apk_file_id = upload_or_update(service, APK_PATH, 'application/vnd.android.package-archive', 'latest.apk', FOLDER_ID)
+    apk_file_id = upload_or_update(service, actual_apk_path, 'application/vnd.android.package-archive', 'latest.apk', FOLDER_ID)
     print(f"APK Uploaded/Updated. File ID: {apk_file_id}")
 
     # Make the download URL for Google Drive
